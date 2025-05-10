@@ -4,4 +4,11 @@ version = "0.1.0"
 description = "Webcam stream analytics project"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "pre-commit>=4.2.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.11.9",
+]

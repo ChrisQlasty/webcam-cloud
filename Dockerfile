@@ -12,16 +12,20 @@ WORKDIR /webcam-cloud
 COPY ./pyproject.toml .
 
 # install dependencies quickly with uv
-RUN uv sync
-    
+RUN uv sync --no-dev
+
+# ---- Stage FFMPEG ----
+FROM jrottenberg/ffmpeg:snapshot-alpine as ffmpeg
     
 # ---- Stage PRODUCTION ----
 FROM python:3.10-slim-bookworm AS production
 
-# install ffmpeg
-RUN apt-get -y update
-RUN apt-get -y upgrade
-RUN apt-get install -y ffmpeg
+# Copy ffmpeg binaries
+COPY --from=ffmpeg /usr/local/bin/ffmpeg /usr/local/bin/ffmpeg
+COPY --from=ffmpeg /usr/local/bin/ffprobe /usr/local/bin/ffprobe
+
+# Make sure they're executable (usually already are)
+RUN chmod +x /usr/local/bin/ffmpeg /usr/local/bin/ffprobe
 
 WORKDIR /webcam-cloud
 COPY . .

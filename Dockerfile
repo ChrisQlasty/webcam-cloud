@@ -22,6 +22,9 @@ RUN apt-get -y update
 RUN apt-get -y upgrade
 RUN apt-get install -y ffmpeg
 
+ARG ENV_STREAM_URL
+ENV ENV_STREAM_URL=$ENV_STREAM_URL
+
 WORKDIR /webcam-cloud
 COPY . .
 

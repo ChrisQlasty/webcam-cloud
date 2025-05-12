@@ -11,24 +11,31 @@ WORKDIR /webcam-cloud
 
 COPY ./pyproject.toml .
 
-# install dependencies quickly with uv
+# install no-dev dependencies quickly with uv
 RUN uv sync --no-dev
 
     
 # ---- Stage PRODUCTION ----
 FROM python:3.10-slim-bookworm AS production
 
+# install ffmpeg
 RUN apt-get -y update
 RUN apt-get -y upgrade
 RUN apt-get install -y ffmpeg
 
+# use and set ENV_STREAM_URL
 ARG ENV_STREAM_URL
+ARG ENV_REGION_NAME
 ENV ENV_STREAM_URL=$ENV_STREAM_URL
+ENV ENV_REGION_NAME=$ENV_REGION_NAME
 
 WORKDIR /webcam-cloud
 COPY . .
 
-# use just installed dependencies
+# use just installed dependencies from the builder stage
 COPY --from=builder /webcam-cloud/.venv .venv
 
-CMD ["python", "modules/webcam-retriever.py"]
+# Set up environment variables for production
+ENV PATH="/webcam-cloud/.venv/bin:$PATH"
+
+CMD ["python", "-m", "modules.webcam_retriever"]

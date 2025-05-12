@@ -4,7 +4,7 @@ import subprocess
 
 logging.basicConfig(level=logging.INFO)
 
-OUTPUT_FILENAME = "data/frame.jpg"
+OUTPUT_FILENAME = "data/frame-%03d.jpg"
 STREAM_URL = os.getenv("ENV_STREAM_URL")
 
 

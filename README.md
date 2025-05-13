@@ -3,37 +3,56 @@
 
 ## Prerequisities:
 
-1. Environmental variables, eg.:
+1. AWS IAM user set up
+2. Configured AWS CLI client (```aws configure```)
+3. Environmental variables, eg.:
 
 ```
 ENV_STREAM_URL="https://???/live.m3u8?a???"
 ENV_REGION_NAME="eu-north-1"
+AWS_ACCOUNT_ID="012345678910"
 ```
 
-2. Configure your AWS client
-```
-aws configure
-```
-... and continue setting it up.
 
 ## Setting everything up
 
-Build Docker image:
+Step 1: Build Your Docker Image
 ```
 cd webcam-cloud
 docker build --build-arg ENV_STREAM_URL=$ENV_STREAM_URL \
              --build-arg ENV_REGION_NAME=$ENV_REGION_NAME \
              --target=production \
              -f Dockerfile \
-             -t webcamcloud-2s:latest . \
+             -t webcam_cloud:latest . \
              --no-cache
 ```
 
 Test it locally with your credentials:
 ```
-docker run -v ~/.aws:/root/.aws -i -t webcamcloud-2s:latest
+docker run -v ~/.aws:/root/.aws -i -t webcam_cloud:latest
 ```
 
+Step 2: Create an ECR Repository
+```
+aws ecr create-repository --repository-name webcam_cloud --region $ENV_REGION_NAME
+ ```
+
+Step 3: Authenticate Docker to AWS ECR
+```
+echo $(aws ecr get-login-password --region $ENV_REGION_NAME) | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$ENV_REGION_NAME.amazonaws.com
+```
+
+Step 4: Tag Your Docker Image for ECR
+```
+docker tag webcam_cloud:latest $AWS_ACCOUNT_ID.dkr.ecr.$ENV_REGION_NAME.amazonaws.com/webcam_cloud:latest
+
+```
+
+Step 5: Push the Docker Image to ECR
+```
+docker push $AWS_ACCOUNT_ID.dkr.ecr.$ENV_REGION_NAME.amazonaws.com/webcam_cloud:latest
+
+```
 
 ---
 ---

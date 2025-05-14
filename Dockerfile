@@ -18,16 +18,13 @@ RUN uv sync --no-dev
 # ---- Stage PRODUCTION ----
 FROM python:3.10-slim-bookworm AS production
 
-# install ffmpeg
-RUN apt-get -y update
-RUN apt-get -y upgrade
-RUN apt-get install -y ffmpeg
-
 # use and set ENV_STREAM_URL
 ARG ENV_STREAM_URL
 ARG ENV_REGION_NAME
+ARG ENV_BUCKET_NAME
 ENV ENV_STREAM_URL=$ENV_STREAM_URL
 ENV ENV_REGION_NAME=$ENV_REGION_NAME
+ENV ENV_BUCKET_NAME=$ENV_BUCKET_NAME
 
 WORKDIR /webcam-cloud
 COPY . .

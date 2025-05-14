@@ -1,8 +1,8 @@
-import logging
-
 import boto3
 
-logging.basicConfig(level=logging.INFO)
+from utils.loggers import create_logger
+
+logger = create_logger(__name__)
 
 
 def upload_file_to_s3(
@@ -13,7 +13,7 @@ def upload_file_to_s3(
     try:
         client = boto3.client("s3", region_name=region_name)
         client.upload_file(file_name, bucket_name, object_name)
-        logging.info(f"Frame uploaded to S3 bucket {bucket_name} as {object_name}")
+        logger.info(f"Frame uploaded to S3 bucket {bucket_name} as {object_name}")
 
     except Exception as e:
-        logging.info(f"Frame not uploaded to S3 bucket: {e}")
+        logger.info(f"Frame not uploaded to S3 bucket: {e}")

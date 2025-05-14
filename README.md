@@ -8,7 +8,7 @@
 3. Environmental variables, eg.:
 
 ```
-ENV_STREAM_URL="https://???/live.m3u8?a???"
+ENV_STREAM_URL="https://www.youtube.com/watch?v=abcdefghijk"
 ENV_REGION_NAME="eu-north-1"
 AWS_ACCOUNT_ID="012345678910"
 ```
@@ -21,6 +21,7 @@ Step 1: Build Your Docker Image
 cd webcam-cloud
 docker build --build-arg ENV_STREAM_URL=$ENV_STREAM_URL \
              --build-arg ENV_REGION_NAME=$ENV_REGION_NAME \
+             --build-arg ENV_BUCKET_NAME=$ENV_BUCKET_NAME \
              --target=production \
              -f Dockerfile \
              -t webcam_cloud:latest . \

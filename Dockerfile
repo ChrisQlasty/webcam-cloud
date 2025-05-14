@@ -1,3 +1,4 @@
+# This is a legacy Dockerfile in terms of this project as is not compatible with AWS' Lambda
 # ---- Stage BUILDER ----
 FROM python:3.10-bookworm AS builder
 

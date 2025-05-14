@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Any
 
 import cv2
 
@@ -43,6 +44,21 @@ def main():
     except Exception as e:
         logger.info(f"Error extracting frame: {e}")
         return e
+
+
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """
+    AWS Lambda handler function.
+    :param event: AWS Lambda event
+    :param context: AWS Lambda context
+    """
+    logger.info("Starting webcam retriever...")
+    ans = main()
+    logger.info("Webcam retriever finished.")
+    return {
+        "statusCode": 200,
+        "body": f"Lambda outcome: {ans}",
+    }
 
 
 if __name__ == "__main__":

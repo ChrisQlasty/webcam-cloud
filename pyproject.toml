@@ -21,6 +21,8 @@ endpoint = [
 ]
 grabber = [
     "boto3>=1.38.15",
+    "click>=8.2.0",
+    "opencv-python-headless>=4.11.0.86",
     "yt-dlp>=2025.4.30",
 ]
 lambda = [

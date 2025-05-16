@@ -29,8 +29,9 @@ BUCKET_NAME = os.getenv("ENV_BUCKET_NAME")
     show_default=True,
 )
 def main(num_frames: int, wait_time: int):
-    """Main application function"""
-    breakpoint()
+    """Live url frames grab and S3 upload function. Intended to run locally, not
+    in the cloud for now."""
+
     direct_stream_m3u8 = get_direct_stream_url(STREAM_URL)
 
     for _ in range(num_frames):

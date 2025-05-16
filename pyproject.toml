@@ -4,16 +4,27 @@ version = "0.1.0"
 description = "Webcam stream analytics project"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = [
-    "boto3>=1.38.13",
-    "numpy>=2.2.5",
-    "opencv-python-headless>=4.11.0.86",
-    "yt-dlp>=2025.4.30",
-]
-
 [dependency-groups]
 dev = [
     "awscli>=1.40.12",
     "pre-commit>=4.2.0",
     "ruff>=0.11.9",
+]
+
+[project.optional-dependencies]
+endpoint = [
+    "opencv-python-headless>=4.11.0.86",
+    "pandas>=2.2.3",
+    "sahi>=0.11.23",
+    "torch>=2.7.0",
+    "ultralytics>=8.3.136",
+]
+grabber = [
+    "boto3>=1.38.15",
+    "yt-dlp>=2025.4.30",
+]
+lambda = [
+    "boto3>=1.38.15",
+    "numpy>=2.2.5",
+    "pandas>=2.2.3",
 ]

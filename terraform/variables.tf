@@ -2,8 +2,8 @@ variable "region" {
   default = "eu-north-1"
 }
 
-variable "account_id" {
-  default = "694509210694"
+variable "aws_account_id" {
+  type = string
 }
 
 variable "budget_limit" {

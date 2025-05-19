@@ -1,3 +1,14 @@
+# webcam-cloud
+---
+![AWS](https://img.shields.io/badge/cloud-AWS-FF9900?logo=amazon-aws&logoColor=white)
+![Terraform](https://img.shields.io/badge/IaC-Terraform-623CE4?logo=terraform&logoColor=white)
+![YouTube](https://img.shields.io/badge/Stream%20from-YouTube-red?logo=youtube&logoColor=white)
+![Docker](https://img.shields.io/badge/Container-Docker-2496ED?logo=docker&logoColor=white)
+![PyTorch](https://img.shields.io/badge/ML-PyTorch-EE4C2C?logo=pytorch&logoColor=white)
+![uv (Astral)](https://img.shields.io/badge/Package%20Manager-uv-0095FF?logo=python&logoColor=white)
+![Ruff](https://img.shields.io/badge/linter-ruff-007ACC?logo=python&logoColor=white)
+![Pre-commit](https://img.shields.io/badge/linter-pre--commit-FE6F6F)
+![Makefile](https://img.shields.io/badge/build-Makefile-6E6E6E)
 
 # Usage
 
@@ -56,7 +67,6 @@ echo $(aws ecr get-login-password --region $ENV_REGION_NAME) | docker login --us
 ### Step 4: Tag Your Docker Image for ECR
 ```
 docker tag webcam_cloud_lambda:latest $AWS_ACCOUNT_ID.dkr.ecr.$ENV_REGION_NAME.amazonaws.com/webcam_cloud_lambda:latest
-
 ```
 
 ### Step 5: Push the Docker Image to ECR

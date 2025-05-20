@@ -20,9 +20,13 @@
 
 ```
 ENV_STREAM_URL="https://www.youtube.com/watch?v=abcdefghijk"
-ENV_REGION_NAME="eu-north-1"
-ENV_BUCKET_NAME="webcam-live"
+TF_VAR_region="eu-north-1"
+TF_VAR_input_bucket="input_bucket"
+TF_VAR_processed_bucket="processed_bucket"
 TF_VAR_aws_account_id="012345678910"
+TF_VAR_lambda1="lambda_1_name"
+TF_VAR_lambda2="lambda_2_name"
+TF_VAR_db_table="table_name"
 ```
 
 
@@ -30,15 +34,15 @@ TF_VAR_aws_account_id="012345678910"
 
 ### Step 0: Create your bucket
 ```
-aws s3 mb s3://$ENV_BUCKET_NAME --region $ENV_REGION_NAME
+aws s3 mb s3://$TF_VAR_input_bucket --region $TF_VAR_region
 ```
 
 ### Step 1: Build Your Docker Image
 ```
 cd webcam-cloud
 docker build --build-arg ENV_STREAM_URL=$ENV_STREAM_URL \
-             --build-arg ENV_REGION_NAME=$ENV_REGION_NAME \
-             --build-arg ENV_BUCKET_NAME=$ENV_BUCKET_NAME \
+             --build-arg TF_VAR_region=$TF_VAR_region \
+             --build-arg TF_VAR_input_bucket=$TF_VAR_input_bucket \
              --target=production \
              -f Dockerfile_Lambda \
              -t webcam_cloud_lambda:latest . \
@@ -56,22 +60,22 @@ curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d
 
 ### Step 2: Create an ECR Repository
 ```
-aws ecr create-repository --repository-name webcam_cloud_lambda --region $ENV_REGION_NAME
+aws ecr create-repository --repository-name webcam_cloud_lambda --region $TF_VAR_region
 ```
 
 ### Step 3: Authenticate Docker to AWS ECR
 ```
-echo $(aws ecr get-login-password --region $ENV_REGION_NAME) | docker login --username AWS --password-stdin $TF_VAR_aws_account_id.dkr.ecr.$ENV_REGION_NAME.amazonaws.com
+echo $(aws ecr get-login-password --region $TF_VAR_region) | docker login --username AWS --password-stdin $TF_VAR_aws_account_id.dkr.ecr.$TF_VAR_region.amazonaws.com
 ```
 
 ### Step 4: Tag Your Docker Image for ECR
 ```
-docker tag webcam_cloud_lambda:latest $TF_VAR_aws_account_id.dkr.ecr.$ENV_REGION_NAME.amazonaws.com/webcam_cloud_lambda:latest
+docker tag webcam_cloud_lambda:latest $TF_VAR_aws_account_id.dkr.ecr.$TF_VAR_region.amazonaws.com/webcam_cloud_lambda:latest
 ```
 
 ### Step 5: Push the Docker Image to ECR
 ```
-docker push $TF_VAR_aws_account_id.dkr.ecr.$ENV_REGION_NAME.amazonaws.com/webcam_cloud_lambda:latest
+docker push $TF_VAR_aws_account_id.dkr.ecr.$TF_VAR_region.amazonaws.com/webcam_cloud_lambda:latest
 
 ```
 

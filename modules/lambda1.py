@@ -1,13 +1,14 @@
 import json
+import os
 
 import boto3
 
 dynamodb = boto3.resource("dynamodb")
 lambda_client = boto3.client("lambda")
 
-TABLE_NAME = "qla_image_metadata"
 BATCH_SIZE = 4
-BATCH_RUNNER_NAME = "qla_summary_lambda"
+TABLE_NAME = os.getenv("TF_VAR_db_table")
+BATCH_RUNNER_NAME = os.getenv("TF_VAR_lambda2")
 
 table = dynamodb.Table(TABLE_NAME)
 

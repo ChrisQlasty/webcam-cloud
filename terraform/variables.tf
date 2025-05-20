@@ -6,6 +6,26 @@ variable "aws_account_id" {
   type = string
 }
 
+variable "input_bucket" {
+  type = string
+}
+
+variable "processed_bucket" {
+  type = string
+}
+
+variable "lambda1" {
+  type = string
+}
+
+variable "lambda2" {
+  type = string
+}
+
+variable "db_table" {
+  type = string
+}
+
 variable "budget_limit" {
   description = "Monthly budget limit in USD"
   default     = 10

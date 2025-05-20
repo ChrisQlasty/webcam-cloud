@@ -14,8 +14,8 @@ logger = create_logger(__name__)
 
 TMP_OUTPUT_FILENAME = "data/output.jpg"
 STREAM_URL = os.getenv("ENV_STREAM_URL")
-REGION_NAME = os.getenv("ENV_REGION_NAME")
-BUCKET_NAME = os.getenv("ENV_BUCKET_NAME")
+REGION_NAME = os.getenv("TF_VAR_region")
+BUCKET_NAME = os.getenv("TF_VAR_input_bucket")
 
 
 @click.command()
@@ -35,7 +35,7 @@ def main(num_frames: int, wait_time: int):
     direct_stream_m3u8 = get_direct_stream_url(STREAM_URL)
 
     for _ in range(num_frames):
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
         filename = f"image_{timestamp}.jpg"
 
         try:

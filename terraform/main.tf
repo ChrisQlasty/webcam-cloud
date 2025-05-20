@@ -20,12 +20,12 @@ resource "aws_budgets_budget" "monthly_budget" {
   time_period_start = "2025-05-18_00:01"
 }
 
-resource "aws_s3_bucket" "qla_income" {
-  bucket = "qla-income"
+resource "aws_s3_bucket" "income_bucket" {
+  bucket = var.input_bucket
 }
 
-resource "aws_s3_bucket" "qla_processed" {
-  bucket = "qla-processed"
+resource "aws_s3_bucket" "processed_bucket" {
+  bucket = var.processed_bucket
 }
 
 resource "aws_sqs_queue" "upload_events" {
@@ -34,7 +34,7 @@ resource "aws_sqs_queue" "upload_events" {
 }
 
 resource "aws_s3_bucket_notification" "income_notifications" {
-  bucket = aws_s3_bucket.qla_income.id
+  bucket = aws_s3_bucket.income_bucket.id
 
   queue {
     queue_arn     = aws_sqs_queue.upload_events.arn
@@ -57,7 +57,7 @@ resource "aws_sqs_queue_policy" "s3_to_sqs" {
       Resource  = aws_sqs_queue.upload_events.arn
       Condition = {
         ArnLike = {
-          "aws:SourceArn" = aws_s3_bucket.qla_income.arn
+          "aws:SourceArn" = aws_s3_bucket.income_bucket.arn
         }
       }
     }]
@@ -66,7 +66,7 @@ resource "aws_sqs_queue_policy" "s3_to_sqs" {
 
 # DynamoDB Table
 resource "aws_dynamodb_table" "image_metadata" {
-  name         = "qla_image_metadata"
+  name         = var.db_table
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "batch_id"
 
@@ -123,10 +123,10 @@ resource "aws_iam_role_policy" "lambda1_policy" {
           "s3:DeleteObject",
         ],
         Resource = [
-          "${aws_s3_bucket.qla_income.arn}",
-          "${aws_s3_bucket.qla_income.arn}/*",
-          "${aws_s3_bucket.qla_processed.arn}",
-          "${aws_s3_bucket.qla_processed.arn}/*"
+          "${aws_s3_bucket.income_bucket.arn}",
+          "${aws_s3_bucket.income_bucket.arn}/*",
+          "${aws_s3_bucket.processed_bucket.arn}",
+          "${aws_s3_bucket.processed_bucket.arn}/*"
         ]
       },
       {
@@ -175,10 +175,10 @@ resource "aws_iam_role_policy" "lambda2_policy" {
           "s3:DeleteObject",
         ],
         Resource = [
-          "${aws_s3_bucket.qla_income.arn}",
-          "${aws_s3_bucket.qla_income.arn}/*",
-          "${aws_s3_bucket.qla_processed.arn}",
-          "${aws_s3_bucket.qla_processed.arn}/*"
+          "${aws_s3_bucket.income_bucket.arn}",
+          "${aws_s3_bucket.income_bucket.arn}/*",
+          "${aws_s3_bucket.processed_bucket.arn}",
+          "${aws_s3_bucket.processed_bucket.arn}/*"
         ]
       },
       {
@@ -197,12 +197,18 @@ locals {
 }
 resource "aws_lambda_function" "lambda1" {
   filename         = local.lambda1_zip_path
-  function_name    = "qla_ingest_lambda"
+  function_name    = var.lambda1
   role             = aws_iam_role.lambda1_exec_role.arn
-  handler          = "lambda1.lambda_handler"
+  handler          = "modules.lambda1.lambda_handler"
   runtime          = "python3.11"
   timeout          = 20
   source_code_hash = filebase64sha256(local.lambda1_zip_path)
+  environment {
+    variables = {
+      TF_VAR_db_table = var.db_table
+      TF_VAR_lambda2  = var.lambda2
+    }
+  }
 }
 
 # SQS Trigger for Lambda 1
@@ -216,12 +222,17 @@ resource "aws_lambda_event_source_mapping" "sqs_to_lambda1" {
 # Lambda 2: summary function
 resource "aws_lambda_function" "lambda2" {
   filename         = local.lambda2_zip_path # ZIP containing your Lambda 2 handler
-  function_name    = "qla_summary_lambda"
+  function_name    = var.lambda2
   role             = aws_iam_role.lambda2_exec_role.arn
-  handler          = "lambda2.lambda_handler"
+  handler          = "modules.lambda2.lambda_handler"
   runtime          = "python3.11"
   timeout          = 20
   source_code_hash = filebase64sha256(local.lambda2_zip_path)
+  environment {
+    variables = {
+      TF_VAR_processed_bucket = var.processed_bucket
+    }
+  }
 }
 
 

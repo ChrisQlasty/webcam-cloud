@@ -28,6 +28,10 @@ resource "aws_s3_bucket" "processed_bucket" {
   bucket = var.processed_bucket
 }
 
+resource "aws_s3_bucket" "models_bucket" {
+  bucket = var.models_bucket
+}
+
 resource "aws_sqs_queue" "upload_events" {
   name                       = "qla-upload-events"
   visibility_timeout_seconds = 35
@@ -155,6 +159,22 @@ resource "aws_iam_role_policy" "lambda1_policy" {
         Effect   = "Allow",
         Action   = ["logs:*"],
         Resource = "*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "sagemaker:CreateTransformJob",
+          "sagemaker:DescribeTransformJob",
+        ],
+        Resource = aws_sagemaker_model.object_detection_model.arn
+        Resource = "arn:aws:sagemaker:${var.region}:${var.aws_account_id}:transform-job/*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "iam:PassRole"
+        ],
+        Resource = aws_iam_role.sagemaker_execution_role.arn
       }
     ]
   })
@@ -243,3 +263,74 @@ resource "aws_lambda_function" "lambda2" {
 #   principal     = "events.amazonaws.com"
 #   source_arn    = aws_cloudwatch_event_rule.every_hour.arn
 # }
+
+resource "aws_iam_role" "sagemaker_execution_role" {
+  name = "sagemaker-execution-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Principal = {
+          Service = "sagemaker.amazonaws.com"
+        },
+        Effect = "Allow",
+        Sid    = ""
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "sagemaker_execution_policy" {
+  name = "sagemaker-execution-policy"
+  role = aws_iam_role.sagemaker_execution_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:ListBucket"
+        ],
+        Resource = [
+          "${aws_s3_bucket.income_bucket.arn}",
+          "${aws_s3_bucket.income_bucket.arn}/*",
+          "${aws_s3_bucket.processed_bucket.arn}",
+          "${aws_s3_bucket.processed_bucket.arn}/*",
+          "${aws_s3_bucket.models_bucket.arn}",
+          "${aws_s3_bucket.models_bucket.arn}/*",
+        ]
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage"
+        ],
+        Resource = "arn:aws:ecr:${var.region}:${var.aws_account_id}:repository/${var.obj_det_image}"
+      },
+      {
+        Effect   = "Allow",
+        Action   = ["logs:*"],
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+
+resource "aws_sagemaker_model" "object_detection_model" {
+  name               = "object-detection-model"
+  execution_role_arn = aws_iam_role.sagemaker_execution_role.arn
+
+  primary_container {
+    image          = "${var.aws_account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.obj_det_image}:latest"
+    model_data_url = "s3://${aws_s3_bucket.models_bucket.bucket}/model_ul/model.tar.gz"
+  }
+}

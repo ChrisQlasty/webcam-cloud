@@ -14,6 +14,14 @@ variable "processed_bucket" {
   type = string
 }
 
+variable "models_bucket" {
+  type = string
+}
+
+variable "obj_det_image" {
+  type = string
+}
+
 variable "lambda1" {
   type = string
 }

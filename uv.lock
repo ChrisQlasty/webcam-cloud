@@ -1538,6 +1538,7 @@ endpoint = [
 grabber = [
     { name = "boto3" },
     { name = "click" },
+    { name = "opencv-python" },
     { name = "opencv-python-headless" },
     { name = "yt-dlp" },
 ]
@@ -1560,6 +1561,7 @@ requires-dist = [
     { name = "boto3", marker = "extra == 'lambda'", specifier = ">=1.38.15" },
     { name = "click", marker = "extra == 'grabber'", specifier = ">=8.2.0" },
     { name = "numpy", marker = "extra == 'lambda'", specifier = ">=2.2.5" },
+    { name = "opencv-python", marker = "extra == 'grabber'", specifier = ">=4.10.0.84" },
     { name = "opencv-python-headless", marker = "extra == 'endpoint'", specifier = ">=4.11.0.86" },
     { name = "opencv-python-headless", marker = "extra == 'grabber'", specifier = ">=4.11.0.86" },
     { name = "pandas", marker = "extra == 'endpoint'", specifier = ">=2.2.3" },

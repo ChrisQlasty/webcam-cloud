@@ -28,7 +28,7 @@ resource "aws_s3_bucket" "processed_bucket" {
   bucket = var.processed_bucket
 }
 
-resource "aws_s3_bucket" "models_bucket" {
+data "aws_s3_bucket" "models_bucket" {
   bucket = var.models_bucket
 }
 
@@ -227,6 +227,8 @@ resource "aws_lambda_function" "lambda1" {
     variables = {
       TF_VAR_db_table = var.db_table
       TF_VAR_lambda2  = var.lambda2
+      TF_VAR_input_bucket = var.input_bucket
+      TF_VAR_processed_bucket = var.processed_bucket
     }
   }
 }
@@ -301,14 +303,20 @@ resource "aws_iam_role_policy" "sagemaker_execution_policy" {
           "${aws_s3_bucket.income_bucket.arn}/*",
           "${aws_s3_bucket.processed_bucket.arn}",
           "${aws_s3_bucket.processed_bucket.arn}/*",
-          "${aws_s3_bucket.models_bucket.arn}",
-          "${aws_s3_bucket.models_bucket.arn}/*",
+          "${data.aws_s3_bucket.models_bucket.arn}",
+          "${data.aws_s3_bucket.models_bucket.arn}/*",
         ]
       },
       {
         Effect = "Allow",
         Action = [
-          "ecr:GetAuthorizationToken",
+          "ecr:GetAuthorizationToken"
+        ],
+        Resource = "*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
           "ecr:BatchCheckLayerAvailability",
           "ecr:GetDownloadUrlForLayer",
           "ecr:BatchGetImage"
@@ -331,6 +339,6 @@ resource "aws_sagemaker_model" "object_detection_model" {
 
   primary_container {
     image          = "${var.aws_account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.obj_det_image}:latest"
-    model_data_url = "s3://${aws_s3_bucket.models_bucket.bucket}/model_ul/model.tar.gz"
+    model_data_url = "s3://${data.aws_s3_bucket.models_bucket.bucket}/model_ul/model.tar.gz"
   }
 }

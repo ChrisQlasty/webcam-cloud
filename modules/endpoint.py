@@ -9,7 +9,7 @@ def main():
     detection_model = AutoDetectionModel.from_pretrained(
         model_type="ultralytics",
         model_path="yolo11n.pt",
-        confidence_threshold=0.35,
+        confidence_threshold=0.6,
         device="cpu",
     )
 
@@ -21,6 +21,8 @@ def main():
         overlap_height_ratio=0.2,
         overlap_width_ratio=0.2,
     )
+
+    result.export_visuals(export_dir="data/", hide_conf=True)
     predictions_dict = result.to_coco_annotations()
     predictions_df = pd.DataFrame(predictions_dict)
     print(predictions_df)

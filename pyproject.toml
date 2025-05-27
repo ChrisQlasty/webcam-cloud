@@ -9,12 +9,15 @@ dev = [
     "awscli>=1.40.12",
     "pre-commit>=4.2.0",
     "ruff>=0.11.9",
+    "tomlq>=0.1.0",
 ]
 
 [project.optional-dependencies]
 endpoint = [
+    "numpy>=2.2.5",
     "opencv-python-headless>=4.11.0.86",
     "pandas>=2.2.3",
+    "pillow>=11.2.1",
     "sahi>=0.11.23",
     "torch>=2.7.0",
     "ultralytics>=8.3.136",

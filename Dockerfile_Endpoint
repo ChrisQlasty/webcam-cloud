@@ -1,0 +1,12 @@
+FROM 763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-inference:2.6.0-cpu-py312-ubuntu22.04-sagemaker AS production
+
+COPY requirements_endpoint.txt /opt/ml/requirements_endpoint.txt
+
+RUN pip install -r /opt/ml/requirements_endpoint.txt
+
+ENV PATH="/opt/ml/code:${PATH}"
+
+COPY modules/inference.py /opt/ml/code/inference.py
+
+ENV SAGEMAKER_SUBMIT_DIRECTORY /opt/ml/code
+ENV SAGEMAKER_PROGRAM inference.py

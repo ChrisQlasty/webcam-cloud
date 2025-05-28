@@ -34,6 +34,10 @@ variable "db_table" {
   type = string
 }
 
+variable "obj_det_model" {
+  type = string
+}
+
 variable "budget_limit" {
   description = "Monthly budget limit in USD"
   default     = 10

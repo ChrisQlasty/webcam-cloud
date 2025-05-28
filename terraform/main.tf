@@ -225,10 +225,11 @@ resource "aws_lambda_function" "lambda1" {
   source_code_hash = filebase64sha256(local.lambda1_zip_path)
   environment {
     variables = {
-      TF_VAR_db_table = var.db_table
-      TF_VAR_lambda2  = var.lambda2
-      TF_VAR_input_bucket = var.input_bucket
+      TF_VAR_db_table         = var.db_table
+      TF_VAR_lambda2          = var.lambda2
+      TF_VAR_input_bucket     = var.input_bucket
       TF_VAR_processed_bucket = var.processed_bucket
+      TF_VAR_obj_det_model = var.obj_det_model
     }
   }
 }
@@ -334,7 +335,7 @@ resource "aws_iam_role_policy" "sagemaker_execution_policy" {
 
 
 resource "aws_sagemaker_model" "object_detection_model" {
-  name               = "object-detection-model"
+  name               = var.obj_det_model
   execution_role_arn = aws_iam_role.sagemaker_execution_role.arn
 
   primary_container {

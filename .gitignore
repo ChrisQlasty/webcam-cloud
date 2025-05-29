@@ -176,3 +176,5 @@ cython_debug/
 # custom
 cloud_resources
 terraform/.terraform
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup

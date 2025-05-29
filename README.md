@@ -16,88 +16,65 @@
 
 1. AWS IAM user set up
 2. Configured AWS CLI client (```aws configure```)
-3. Environmental variables, eg.:
+3. Quota > 0 for batch transform job for selected machine type (eg. ml.m5.large) [see Service Quotas @ AWS]
+4. Colima (for Mac) and Docker installed
+5. Terraform installed
+6. uv installed, .venv activated and synced (```uv sync --only-dev```)
+7. Environmental variables, eg.:
 
 ```
 ENV_STREAM_URL="https://www.youtube.com/watch?v=abcdefghijk"
 TF_VAR_region="eu-north-1"
-TF_VAR_input_bucket="input_bucket"
-TF_VAR_processed_bucket="processed_bucket"
+TF_VAR_input_bucket="input-bucket"
+TF_VAR_processed_bucket="processed-bucket"
+TF_VAR_models_bucket="models-bucket"
 TF_VAR_aws_account_id="012345678910"
-TF_VAR_lambda1="lambda_1_name"
-TF_VAR_lambda2="lambda_2_name"
-TF_VAR_db_table="table_name"
+TF_VAR_lambda1="lambda-1-name"
+TF_VAR_lambda2="lambda-2-name"
+TF_VAR_db_table="table-name"
+TF_VAR_obj_det_image="obj-det-image"
+TF_VAR_obj_det_model="object-det-model"
 ```
 
 
 ## Setting everything up
 
-### Step 0: Create your bucket
+1. Prepare SageMaker inference model
 ```
-aws s3 mb s3://$TF_VAR_input_bucket --region $TF_VAR_region
+# Create bucket to store model
+aws s3api create-bucket --bucket ${TF_VAR_models_bucket} --region ${TF_VAR_region} --create-bucket-configuration LocationConstraint=${TF_VAR_region} && \
+
+make prep_inference_model
 ```
 
-### Step 1: Build Your Docker Image
+2. Build Endpoint Docker image and push to ECR
 ```
-cd webcam-cloud
-docker build --build-arg ENV_STREAM_URL=$ENV_STREAM_URL \
-             --build-arg TF_VAR_region=$TF_VAR_region \
-             --build-arg TF_VAR_input_bucket=$TF_VAR_input_bucket \
-             --target=production \
-             -f Dockerfile_Lambda \
-             -t webcam_cloud_lambda:latest . \
-             --no-cache
+### Step 0: Authenticate Docker to AWS ECR
+echo $(aws ecr get-login-password --region $TF_VAR_region) | docker login --username AWS --password-stdin $TF_VAR_aws_account_id.dkr.ecr.$TF_VAR_region.amazonaws.com && \  
+
+echo $(aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 763104351884.dkr.ecr.us-east-1.amazonaws.com) && \  
+
+make prep_endpoint_image
 ```
 
-Test it locally with your credentials to simulate Lambda:
+
+3. Prepare code for AWS Lambdas
 ```
-docker run -v ~/.aws:/root/.aws -p 9000:8080 webcam_cloud_lambda:latest
-```
-and in separate terminal window run:
-```
-curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{}'
+make prep_lambdas
 ```
 
-### Step 2: Create an ECR Repository
+4. Set up services with Terraform
 ```
-aws ecr create-repository --repository-name webcam_cloud_lambda --region $TF_VAR_region
-```
-
-### Step 3: Authenticate Docker to AWS ECR
-```
-echo $(aws ecr get-login-password --region $TF_VAR_region) | docker login --username AWS --password-stdin $TF_VAR_aws_account_id.dkr.ecr.$TF_VAR_region.amazonaws.com
+make aws_apply
 ```
 
-### Step 4: Tag Your Docker Image for ECR
+5. Run frames grabbing and initialize project
 ```
-docker tag webcam_cloud_lambda:latest $TF_VAR_aws_account_id.dkr.ecr.$TF_VAR_region.amazonaws.com/webcam_cloud_lambda:latest
-```
-
-### Step 5: Push the Docker Image to ECR
-```
-docker push $TF_VAR_aws_account_id.dkr.ecr.$TF_VAR_region.amazonaws.com/webcam_cloud_lambda:latest
-
+uv sync --extra grabber
+python modules/grabber.py
 ```
 
+Issues:
 ---
----
----
-
-1. Installation
-```
-# please install uv first
-uv sync
-source .venv/bin/activate
-pre-commit install 
-```
-
-2. Required env variables
-```
-ENV_STREAM_URL="https://?????/live.m3u8??????"
-```
-
-# Setting up description
-1. Project initialization with uv  
-```uv init webcam-cloud```
-2. Add ruff as default formatter  
-```uv add --dev ruff```
+I. Custom Docker image for SageMaker batch transform job
+ - packing code to model.tar.gz is mandatory [GitHub issue](https://github.com/aws/sagemaker-pytorch-inference-toolkit/issues/61#issuecomment-665980501)

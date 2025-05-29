@@ -7,7 +7,9 @@ requires-python = ">=3.10"
 [dependency-groups]
 dev = [
     "awscli>=1.40.12",
+    "numpy>=2.2.5",
     "pre-commit>=4.2.0",
+    "pytest>=8.3.5",
     "ruff>=0.11.9",
     "tomlq>=0.1.0",
 ]

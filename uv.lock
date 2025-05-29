@@ -1656,6 +1656,7 @@ endpoint = [
 grabber = [
     { name = "boto3" },
     { name = "click" },
+    { name = "numpy" },
     { name = "opencv-python" },
     { name = "opencv-python-headless" },
     { name = "yt-dlp" },
@@ -1669,7 +1670,6 @@ lambda = [
 [package.dev-dependencies]
 dev = [
     { name = "awscli" },
-    { name = "numpy" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "ruff" },
@@ -1682,6 +1682,7 @@ requires-dist = [
     { name = "boto3", marker = "extra == 'lambda'", specifier = ">=1.38.15" },
     { name = "click", marker = "extra == 'grabber'", specifier = ">=8.2.0" },
     { name = "numpy", marker = "extra == 'endpoint'", specifier = ">=2.2.5" },
+    { name = "numpy", marker = "extra == 'grabber'", specifier = ">=2.2.5" },
     { name = "numpy", marker = "extra == 'lambda'", specifier = ">=2.2.5" },
     { name = "opencv-python", marker = "extra == 'grabber'", specifier = ">=4.10.0.84" },
     { name = "opencv-python-headless", marker = "extra == 'endpoint'", specifier = ">=4.11.0.86" },
@@ -1699,7 +1700,6 @@ provides-extras = ["endpoint", "grabber", "lambda"]
 [package.metadata.requires-dev]
 dev = [
     { name = "awscli", specifier = ">=1.40.12" },
-    { name = "numpy", specifier = ">=2.2.5" },
     { name = "pre-commit", specifier = ">=4.2.0" },
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "ruff", specifier = ">=0.11.9" },

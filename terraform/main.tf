@@ -152,11 +152,6 @@ resource "aws_iam_role_policy" "lambda1_policy" {
       },
       {
         Effect   = "Allow",
-        Action   = "lambda:InvokeFunction",
-        Resource = aws_lambda_function.lambda2.arn
-      },
-      {
-        Effect   = "Allow",
         Action   = ["logs:*"],
         Resource = "*"
       },
@@ -193,6 +188,7 @@ resource "aws_iam_role_policy" "lambda2_policy" {
           "s3:GetObject",
           "s3:PutObject",
           "s3:DeleteObject",
+          "s3:ListBucket",
         ],
         Resource = [
           "${aws_s3_bucket.income_bucket.arn}",
@@ -226,7 +222,6 @@ resource "aws_lambda_function" "lambda1" {
   environment {
     variables = {
       TF_VAR_db_table         = var.db_table
-      TF_VAR_lambda2          = var.lambda2
       TF_VAR_input_bucket     = var.input_bucket
       TF_VAR_processed_bucket = var.processed_bucket
       TF_VAR_obj_det_model = var.obj_det_model
@@ -244,7 +239,7 @@ resource "aws_lambda_event_source_mapping" "sqs_to_lambda1" {
 
 # Lambda 2: summary function
 resource "aws_lambda_function" "lambda2" {
-  filename         = local.lambda2_zip_path # ZIP containing your Lambda 2 handler
+  filename         = local.lambda2_zip_path
   function_name    = var.lambda2
   role             = aws_iam_role.lambda2_exec_role.arn
   handler          = "modules.lambda2.lambda_handler"
@@ -253,19 +248,12 @@ resource "aws_lambda_function" "lambda2" {
   source_code_hash = filebase64sha256(local.lambda2_zip_path)
   environment {
     variables = {
+      TF_VAR_input_bucket     = var.input_bucket
       TF_VAR_processed_bucket = var.processed_bucket
     }
   }
 }
 
-
-# resource "aws_lambda_permission" "allow_cloudwatch_to_invoke_lambda2" {
-#   statement_id  = "AllowExecutionFromCloudWatch"
-#   action        = "lambda:InvokeFunction"
-#   function_name = aws_lambda_function.lambda2.function_name
-#   principal     = "events.amazonaws.com"
-#   source_arn    = aws_cloudwatch_event_rule.every_hour.arn
-# }
 
 resource "aws_iam_role" "sagemaker_execution_role" {
   name = "sagemaker-execution-role"
@@ -342,4 +330,31 @@ resource "aws_sagemaker_model" "object_detection_model" {
     image          = "${var.aws_account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.obj_det_image}:latest"
     model_data_url = "s3://${data.aws_s3_bucket.models_bucket.bucket}/model_ul/model.tar.gz"
   }
+}
+
+resource "aws_cloudwatch_event_rule" "sagemaker_job_completed" {
+  name        = "sagemaker-transform-job-complete"
+  description = "Trigger Lambda when SageMaker batch transform job completes"
+
+  event_pattern = jsonencode({
+    source      = ["aws.sagemaker"],
+    "detail-type" = ["SageMaker Transform Job State Change"],
+    detail      = {
+      TransformJobStatus = ["Completed", "Failed", "Stopped"]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "lambda_target" {
+  rule      = aws_cloudwatch_event_rule.sagemaker_job_completed.name
+  target_id = "SendToLambda"
+  arn       = aws_lambda_function.lambda2.arn
+}
+
+resource "aws_lambda_permission" "allow_eventbridge" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.lambda2.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.sagemaker_job_completed.arn
 }

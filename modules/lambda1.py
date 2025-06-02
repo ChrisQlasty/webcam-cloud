@@ -14,7 +14,6 @@ lambda_client = boto3.client("lambda")
 
 BATCH_SIZE = 2
 TABLE_NAME = os.getenv("TF_VAR_db_table")
-BATCH_RUNNER_NAME = os.getenv("TF_VAR_lambda2")
 SOURCE_BUCKET = os.getenv("TF_VAR_input_bucket")
 DEST_BUCKET = os.getenv("TF_VAR_processed_bucket")
 MODEL_NAME = os.getenv("TF_VAR_obj_det_model")

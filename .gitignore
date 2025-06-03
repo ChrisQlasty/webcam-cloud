@@ -178,3 +178,4 @@ cloud_resources
 terraform/.terraform
 terraform/terraform.tfstate
 terraform/terraform.tfstate.backup
+.DS_Store

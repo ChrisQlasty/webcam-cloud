@@ -39,7 +39,7 @@ def call_batch_transform_job():
             "ContentType": "application/x-image",
         },
         TransformOutput={
-            "S3OutputPath": f"s3://{DEST_BUCKET}/",
+            "S3OutputPath": f"s3://{DEST_BUCKET}/unprocessed/",
             "Accept": "application/json",
         },
         TransformResources={"InstanceType": INSTANCE_TYPE, "InstanceCount": 1},

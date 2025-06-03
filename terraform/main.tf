@@ -198,6 +198,14 @@ resource "aws_iam_role_policy" "lambda2_policy" {
         ]
       },
       {
+        Effect = "Allow",
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem"
+        ],
+        Resource = aws_dynamodb_table.image_stats.arn
+      },
+      {
         Effect   = "Allow",
         Action   = ["logs:*"],
         Resource = "*"
@@ -250,6 +258,7 @@ resource "aws_lambda_function" "lambda2" {
     variables = {
       TF_VAR_input_bucket     = var.input_bucket
       TF_VAR_processed_bucket = var.processed_bucket
+      TF_VAR_db_img_stats_table = var.db_img_stats_table
     }
   }
 }
@@ -357,4 +366,21 @@ resource "aws_lambda_permission" "allow_eventbridge" {
   function_name = aws_lambda_function.lambda2.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.sagemaker_job_completed.arn
+}
+
+resource "aws_dynamodb_table" "image_stats" {
+  name           = var.db_img_stats_table
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "id"
+  range_key      = "category_name"
+
+  attribute {
+    name = "id"
+    type = "S"
+  }
+
+  attribute {
+    name = "category_name"
+    type = "S"
+  }
 }

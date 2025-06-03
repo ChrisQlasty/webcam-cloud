@@ -34,6 +34,10 @@ variable "db_table" {
   type = string
 }
 
+variable "db_img_stats_table" {
+  type = string
+}
+
 variable "obj_det_model" {
   type = string
 }

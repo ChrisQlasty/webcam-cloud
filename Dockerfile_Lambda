@@ -23,7 +23,7 @@ RUN --mount=from=uv,source=/uv,target=/bin/uv \
     --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv export --frozen --no-emit-workspace --no-dev --no-editable -o requirements.txt && \
+    uv export --extra lambda --frozen --no-emit-workspace --no-dev --no-editable -o requirements.txt && \
     uv pip install -r requirements.txt --target "${LAMBDA_TASK_ROOT}"
 
 # ---- Stage PRODUCTION ----
@@ -33,16 +33,16 @@ FROM public.ecr.aws/lambda/python:3.10 AS production
 COPY --from=builder ${LAMBDA_TASK_ROOT} ${LAMBDA_TASK_ROOT}
 
 # Use ARGs to pass environment variables at build time
-ARG ENV_STREAM_URL
-ARG ENV_REGION_NAME
-ARG ENV_BUCKET_NAME
-ENV ENV_STREAM_URL=$ENV_STREAM_URL
-ENV ENV_REGION_NAME=$ENV_REGION_NAME
-ENV ENV_BUCKET_NAME=$ENV_BUCKET_NAME
+ARG TF_VAR_input_bucket
+ARG TF_VAR_processed_bucket
+ARG TF_VAR_db_img_stats_table
+ENV TF_VAR_input_bucket=$TF_VAR_input_bucket
+ENV TF_VAR_processed_bucket=$TF_VAR_processed_bucket
+ENV TF_VAR_db_img_stats_table=$TF_VAR_db_img_stats_table
 
 # Copy the application code.
 COPY . ${LAMBDA_TASK_ROOT}
 
 # Set the AWS Lambda handler.
-CMD ["modules.webcam_retriever.lambda_handler"]
+CMD ["modules.lambda2.lambda_handler"]
     

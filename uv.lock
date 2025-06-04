@@ -1665,6 +1665,7 @@ lambda = [
     { name = "boto3" },
     { name = "numpy" },
     { name = "pandas" },
+    { name = "pillow" },
 ]
 
 [package.dev-dependencies]
@@ -1690,6 +1691,7 @@ requires-dist = [
     { name = "pandas", marker = "extra == 'endpoint'", specifier = ">=2.2.3" },
     { name = "pandas", marker = "extra == 'lambda'", specifier = ">=2.2.3" },
     { name = "pillow", marker = "extra == 'endpoint'", specifier = ">=11.2.1" },
+    { name = "pillow", marker = "extra == 'lambda'", specifier = ">=11.2.1" },
     { name = "sahi", marker = "extra == 'endpoint'", specifier = ">=0.11.23" },
     { name = "torch", marker = "extra == 'endpoint'", specifier = ">=2.7.0" },
     { name = "ultralytics", marker = "extra == 'endpoint'", specifier = ">=8.3.136" },

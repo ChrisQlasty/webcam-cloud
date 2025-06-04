@@ -17,22 +17,21 @@ prep_inference_model:
 	aws s3 cp model.tar.gz s3://${TF_VAR_models_bucket}/model_ul/ && \
 	rm model.tar.gz && rm -rf my_model
 
+prep_ecr_repo:
+	aws ecr create-repository --repository-name ${docker_image_name} --region ${TF_VAR_region}
+
 prep_endpoint_image:	
 	: ### Step 1: Build Your Docker Image
-	: # docker buildx build --platform=linux/amd64 -f Dockerfile_Endpoint -t ${TF_VAR_obj_det_image}:latest . && \
-	: ### Step 2: Create an ECR Repository
-	aws ecr create-repository --repository-name ${TF_VAR_obj_det_image} --region ${TF_VAR_region} && \
-	: ### Step 4: Tag Your Docker Image for ECR
-	docker tag ${TF_VAR_obj_det_image}:latest ${TF_VAR_aws_account_id}.dkr.ecr.${TF_VAR_region}.amazonaws.com/${TF_VAR_obj_det_image}:latest && \
-	: ### Step 5: Push the Docker Image to ECR
-	docker push ${TF_VAR_aws_account_id}.dkr.ecr.${TF_VAR_region}.amazonaws.com/${TF_VAR_obj_det_image}:latest
+	docker buildx build --platform=linux/amd64 -f $(Dockerfile_name) -t ${docker_image_name}:latest . && \
+	: ### Step 2: Tag Your Docker Image for ECR
+	docker tag ${docker_image_name}:latest ${TF_VAR_aws_account_id}.dkr.ecr.${TF_VAR_region}.amazonaws.com/${docker_image_name}:latest && \
+	: ### Step 3: Push the Docker Image to ECR
+	docker push ${TF_VAR_aws_account_id}.dkr.ecr.${TF_VAR_region}.amazonaws.com/${docker_image_name}:latest
 
 
-prep_lambdas:
+prep_lambda:
 	mkdir -p cloud_resources
 	zip cloud_resources/lambda1.zip modules/lambda1.py
-	zip cloud_resources/lambda2.zip modules/lambda2.py
-
 
 aws_apply:
 	cd terraform && \

@@ -33,6 +33,7 @@ TF_VAR_lambda1="lambda-1-name"
 TF_VAR_lambda2="lambda-2-name"
 TF_VAR_db_table="table-name"
 TF_VAR_obj_det_image="obj-det-image"
+TF_VAR_lambda2_image="lambda2-image"
 TF_VAR_obj_det_model="object-det-model"
 ```
 
@@ -49,26 +50,35 @@ make prep_inference_model
 
 2. Build Endpoint Docker image and push to ECR
 ```
-### Step 0: Authenticate Docker to AWS ECR
+# Authenticate Docker to AWS ECR
 echo $(aws ecr get-login-password --region $TF_VAR_region) | docker login --username AWS --password-stdin $TF_VAR_aws_account_id.dkr.ecr.$TF_VAR_region.amazonaws.com && \  
 
 echo $(aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 763104351884.dkr.ecr.us-east-1.amazonaws.com) && \  
 
-make prep_endpoint_image
+make prep_ecr_repo docker_image_name=$TF_VAR_obj_det_image && \
+make prep_endpoint_image Dockerfile_name=Dockerfile_Endpoint docker_image_name=$TF_VAR_obj_det_image
 ```
 
-
-3. Prepare code for AWS Lambdas
+3. Build Lambda2 Docker image and push to ECR
 ```
-make prep_lambdas
+# Authenticate Docker to AWS ECR
+echo $(aws ecr get-login-password --region $TF_VAR_region) | docker login --username AWS --password-stdin $TF_VAR_aws_account_id.dkr.ecr.$TF_VAR_region.amazonaws.com && \  
+
+make prep_ecr_repo docker_image_name=$TF_VAR_lambda2_image && \
+make prep_endpoint_image Dockerfile_name=Dockerfile_Lambda docker_image_name=$TF_VAR_lambda2_image
 ```
 
-4. Set up services with Terraform
+4. Prepare code for AWS Lambda
+```
+make prep_lambda
+```
+
+5. Set up services with Terraform
 ```
 make aws_apply
 ```
 
-5. Run frames grabbing and initialize project
+6. Run frames grabbing and initialize project
 ```
 uv sync --extra grabber
 python modules/grabber.py

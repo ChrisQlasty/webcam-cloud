@@ -22,6 +22,10 @@ variable "obj_det_image" {
   type = string
 }
 
+variable "lambda2_image" {
+  type = string
+}
+
 variable "lambda1" {
   type = string
 }

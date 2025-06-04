@@ -206,6 +206,22 @@ resource "aws_iam_role_policy" "lambda2_policy" {
         Resource = aws_dynamodb_table.image_stats.arn
       },
       {
+        Effect = "Allow",
+        Action = [
+          "ecr:GetAuthorizationToken"
+        ],
+        Resource = "*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage"
+        ],
+        Resource = "arn:aws:ecr:${var.region}:${var.aws_account_id}:repository/${var.lambda2_image}"
+      },
+      {
         Effect   = "Allow",
         Action   = ["logs:*"],
         Resource = "*"
@@ -232,7 +248,7 @@ resource "aws_lambda_function" "lambda1" {
       TF_VAR_db_table         = var.db_table
       TF_VAR_input_bucket     = var.input_bucket
       TF_VAR_processed_bucket = var.processed_bucket
-      TF_VAR_obj_det_model = var.obj_det_model
+      TF_VAR_obj_det_model    = var.obj_det_model
     }
   }
 }
@@ -245,19 +261,25 @@ resource "aws_lambda_event_source_mapping" "sqs_to_lambda1" {
   enabled          = true
 }
 
+
+data "aws_ecr_image" "latest_lambda2_image" {
+  repository_name = var.lambda2_image
+  image_tag       = "latest"
+}
+
+
 # Lambda 2: summary function
 resource "aws_lambda_function" "lambda2" {
-  filename         = local.lambda2_zip_path
   function_name    = var.lambda2
   role             = aws_iam_role.lambda2_exec_role.arn
-  handler          = "modules.lambda2.lambda_handler"
-  runtime          = "python3.11"
+  package_type     = "Image"
+  image_uri        = data.aws_ecr_image.latest_lambda2_image.image_uri
   timeout          = 20
   source_code_hash = filebase64sha256(local.lambda2_zip_path)
   environment {
     variables = {
-      TF_VAR_input_bucket     = var.input_bucket
-      TF_VAR_processed_bucket = var.processed_bucket
+      TF_VAR_input_bucket       = var.input_bucket
+      TF_VAR_processed_bucket   = var.processed_bucket
       TF_VAR_db_img_stats_table = var.db_img_stats_table
     }
   }
@@ -294,7 +316,8 @@ resource "aws_iam_role_policy" "sagemaker_execution_policy" {
         Action = [
           "s3:GetObject",
           "s3:PutObject",
-          "s3:ListBucket"
+          "s3:DeleteObject",
+          "s3:ListBucket",
         ],
         Resource = [
           "${aws_s3_bucket.income_bucket.arn}",
@@ -330,13 +353,18 @@ resource "aws_iam_role_policy" "sagemaker_execution_policy" {
   })
 }
 
+data "aws_ecr_image" "latest_obj_det_image" {
+  repository_name = var.obj_det_image
+  image_tag       = "latest"
+}
+
 
 resource "aws_sagemaker_model" "object_detection_model" {
   name               = var.obj_det_model
   execution_role_arn = aws_iam_role.sagemaker_execution_role.arn
 
   primary_container {
-    image          = "${var.aws_account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.obj_det_image}:latest"
+    image          = data.aws_ecr_image.latest_obj_det_image.image_uri
     model_data_url = "s3://${data.aws_s3_bucket.models_bucket.bucket}/model_ul/model.tar.gz"
   }
 }
@@ -346,9 +374,9 @@ resource "aws_cloudwatch_event_rule" "sagemaker_job_completed" {
   description = "Trigger Lambda when SageMaker batch transform job completes"
 
   event_pattern = jsonencode({
-    source      = ["aws.sagemaker"],
+    source        = ["aws.sagemaker"],
     "detail-type" = ["SageMaker Transform Job State Change"],
-    detail      = {
+    detail = {
       TransformJobStatus = ["Completed", "Failed", "Stopped"]
     }
   })
@@ -369,10 +397,10 @@ resource "aws_lambda_permission" "allow_eventbridge" {
 }
 
 resource "aws_dynamodb_table" "image_stats" {
-  name           = var.db_img_stats_table
-  billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "id"
-  range_key      = "category_name"
+  name         = var.db_img_stats_table
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "id"
+  range_key    = "category_name"
 
   attribute {
     name = "id"

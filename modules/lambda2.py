@@ -23,7 +23,7 @@ DEST_TABLE = os.getenv("TF_VAR_db_img_stats_table")
 UNPROCESSED_FOLDER = "unprocessed"
 PROCESSED_FOLDER = "processed"
 
-WRITE_TO_DB = False
+WRITE_TO_DB = True
 
 ALLOWED_CATEGORIES = [
     "person",
@@ -53,6 +53,7 @@ def get_filename(filename: str) -> str:
 def proc_json(fv, bucket, dt_key):
     """Process JSON file with predictions and store aggregated data in DynamoDB"""
     json_key = fv["json_key"]
+    logger.info(f"Processing JSON file: {json_key}")
     json_obj = s3.get_object(Bucket=bucket, Key=json_key)
     json_content = json_obj["Body"].read().decode("utf-8")
     metadata = json.loads(json_content)
@@ -72,12 +73,14 @@ def proc_json(fv, bucket, dt_key):
                 "mean_score": Decimal(str(agg_cat_row["score"])),
             }
             if WRITE_TO_DB:
+                logger.info(f"Writing item to {DEST_TABLE} table: {item}")
                 table.put_item(Item=item)
 
 
 def proc_jpeg(fv, bucket, dt_key):
     """Process JPEG file and calculate mean brightness, store in DynamoDB"""
     jpeg_key = fv["jpeg_key"]
+    logger.info(f"Processing JPEG file: {jpeg_key}")
     jpeg_obj = s3.get_object(Bucket=bucket, Key=jpeg_key)
     image_bytes = jpeg_obj["Body"].read()
     image_stream = io.BytesIO(image_bytes)
@@ -91,11 +94,13 @@ def proc_jpeg(fv, bucket, dt_key):
         "mean_brightness": Decimal(str(brightness)),
     }
     if WRITE_TO_DB:
+        logger.info(f"Writing item to {DEST_TABLE} table: {item}")
         table.put_item(Item=item)
 
 
 def feed_db_with_preds(bucket, prefix):
     """Feed DynamoDB table with predictions from S3"""
+    logger.info(f"Feeding DynamoDB table {DEST_TABLE} with image statistics")
     output_files = {}
     paginator = s3.get_paginator("list_objects_v2")
     prefix = prefix.strip("/")

@@ -1,5 +1,3 @@
-import io
-import json
 import logging
 import os
 import re
@@ -9,9 +7,8 @@ from decimal import Decimal
 import boto3
 import numpy as np
 import pandas as pd
-from PIL import Image
 
-from utils.aws_cloud import mv_files_to_bucket
+from utils.aws_cloud import load_jpeg_from_s3, load_json_from_s3, mv_files_to_bucket
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -50,13 +47,6 @@ def get_filename(filename: str) -> str:
     return dt_key
 
 
-def load_json_from_s3(bucket: str, key: str):
-    """Return decoded JSON content from S3."""
-    json_obj = s3.get_object(Bucket=bucket, Key=key)
-    json_content = json_obj["Body"].read().decode("utf-8")
-    return json.loads(json_content)
-
-
 def proc_json(metadata, dt_key):
     """Process predictions metadata and store aggregated data in DynamoDB"""
     logger.info("Processing JSON metadata")
@@ -78,14 +68,6 @@ def proc_json(metadata, dt_key):
             if WRITE_TO_DB:
                 logger.info(f"Writing item to {DEST_TABLE} table: {item}")
                 table.put_item(Item=item)
-
-
-def load_jpeg_from_s3(bucket: str, key: str) -> np.ndarray:
-    """Return image as numpy array from S3 JPEG."""
-    jpeg_obj = s3.get_object(Bucket=bucket, Key=key)
-    image_bytes = jpeg_obj["Body"].read()
-    image_stream = io.BytesIO(image_bytes)
-    return np.array(Image.open(image_stream))
 
 
 def proc_jpeg(image: np.ndarray, dt_key: str):
@@ -130,11 +112,11 @@ def feed_db_with_preds(bucket, prefix):
         dt_key = get_filename(unique_id)
 
         if "json_key" in fv:
-            metadata = load_json_from_s3(bucket, fv["json_key"])
+            metadata = load_json_from_s3(s3, bucket, fv["json_key"])
             proc_json(metadata, dt_key)
 
         if "jpeg_key" in fv:
-            image = load_jpeg_from_s3(bucket, fv["jpeg_key"])
+            image = load_jpeg_from_s3(s3, bucket, fv["jpeg_key"])
             proc_jpeg(image, dt_key)
 
 

@@ -1,7 +1,10 @@
+import io
 import json
 from typing import Any
 
 import boto3
+import numpy as np
+from PIL import Image
 
 from utils.loggers import create_logger
 
@@ -63,3 +66,18 @@ def mv_files_to_bucket(
         "statusCode": 200,
         "body": json.dumps(f"Moved files to {dest_bucket}/{dest_prefix}"),
     }
+
+
+def load_jpeg_from_s3(s3: Any, bucket: str, key: str) -> np.ndarray:
+    """Return image as numpy array from S3 JPEG."""
+    jpeg_obj = s3.get_object(Bucket=bucket, Key=key)
+    image_bytes = jpeg_obj["Body"].read()
+    image_stream = io.BytesIO(image_bytes)
+    return np.array(Image.open(image_stream))
+
+
+def load_json_from_s3(s3: Any, bucket: str, key: str):
+    """Return decoded JSON content from S3."""
+    json_obj = s3.get_object(Bucket=bucket, Key=key)
+    json_content = json_obj["Body"].read().decode("utf-8")
+    return json.loads(json_content)

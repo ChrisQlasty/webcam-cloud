@@ -24,34 +24,143 @@ def fetch_data():
     if "id" in df.columns:
         df["id"] = pd.to_datetime(df["id"], format="%Y-%m-%d_%H:%M:%S")
 
+    df = df.sort_values(by="id")
+
     return df
 
 
 # Dash app
 app = dash.Dash(__name__)
-app.title = "DynamoDB Dashboard"
+app.title = "webcam-cloud dashboard"
 
+# --- Layout Definition ---
 app.layout = html.Div(
     [
-        html.H1("DynamoDB Dashboard"),
-        html.Button("Refresh Data", id="refresh-btn", n_clicks=0),
-        dcc.Graph(id="my-graph"),
+        html.H1(
+            "webcam-cloud dashboard",
+            style={"textAlign": "center", "marginBottom": "30px"},
+        ),
+        html.Div(
+            style={"textAlign": "center", "marginBottom": "20px"},
+            children=[
+                html.Button(
+                    "Refresh Data",
+                    id="refresh-btn",
+                    n_clicks=0,
+                    style={
+                        "padding": "10px 20px",
+                        "fontSize": "16px",
+                        "cursor": "pointer",
+                    },
+                )
+            ],
+        ),
+        # This is the main grid container
+        html.Div(
+            style={
+                "display": "grid",
+                "grid-template-columns": "1fr 1fr",  # Two equal-width columns
+                "grid-template-rows": "1fr 1fr",  # Two equal-height rows
+                "gap": "20px",  # Space between grid items
+                "height": "80vh",  # Make the grid fill most of the viewport height
+                "width": "90vw",  # Make the grid fill most of the viewport width
+                "margin": "auto",  # Center the grid container horizontally
+                "padding": "15px",  # Padding around the grid
+                "border": "1px solid #ddd",  # Optional: for visual debugging
+                "borderRadius": "8px",
+                "boxShadow": "2px 2px 10px rgba(0,0,0,0.1)",
+            },
+            children=[
+                # Top-Left Cell: Image (Webcam Feed)
+                html.Div(
+                    style={
+                        "backgroundColor": "#f9f9f9",
+                        "display": "flex",
+                        "justifyContent": "center",
+                        "alignItems": "center",
+                        "overflow": "hidden",  # Hide overflow if image is too big
+                        "borderRadius": "8px",
+                        "border": "1px solid #eee",
+                    },
+                    children=[
+                        # Placeholder for the webcam image.
+                        # In a real app, 'src' would be updated via a callback
+                        # pointing to a Flask endpoint serving the webcam feed.
+                        html.Img(
+                            src="/assets/placeholder_webcam.png",  # You need to place an image here in an 'assets' folder
+                            id="webcam-feed",
+                            alt="Webcam Feed",
+                            style={
+                                "maxWidth": "100%",
+                                "maxHeight": "100%",
+                                "objectFit": "contain",
+                            },
+                        )
+                    ],
+                ),
+                # Top-Right Cell: Chart 1 (Original cat_count_graph)
+                html.Div(
+                    style={
+                        "backgroundColor": "#f9f9f9",
+                        "borderRadius": "8px",
+                        "border": "1px solid #eee",
+                    },
+                    children=[
+                        dcc.Graph(
+                            id="cat_count_graph",
+                            style={"height": "100%", "width": "100%"},
+                        )
+                    ],
+                ),
+                # Bottom-Left Cell: Chart 2
+                html.Div(
+                    style={
+                        "backgroundColor": "#f9f9f9",
+                        "borderRadius": "8px",
+                        "border": "1px solid #eee",
+                    },
+                    children=[
+                        dcc.Graph(
+                            id="chart-2", style={"height": "100%", "width": "100%"}
+                        )
+                    ],
+                ),
+                # Bottom-Right Cell: Chart 3
+                html.Div(
+                    style={
+                        "backgroundColor": "#f9f9f9",
+                        "borderRadius": "8px",
+                        "border": "1px solid #eee",
+                    },
+                    children=[
+                        dcc.Graph(
+                            id="chart-3", style={"height": "100%", "width": "100%"}
+                        )
+                    ],
+                ),
+            ],
+        ),
     ]
 )
 
 
-@app.callback(Output("my-graph", "figure"), Input("refresh-btn", "n_clicks"))
+@app.callback(Output("cat_count_graph", "figure"), Input("refresh-btn", "n_clicks"))
 def update_graph(n_clicks):
     df = fetch_data()
     if df.empty:
         return px.scatter(title="No Data")
 
-    # Example: group by category and count
-    if "category_name" in df.columns:
-        grouped = df.groupby("category_name").size().reset_index(name="count")
-        fig = px.bar(grouped, x="category_name", y="count", title="Count by Category")
-    else:
-        fig = px.scatter(title="Missing 'category_name' field")
+    df_filtered = df[df["category_name"] != "whole_image"]
+    df_filtered["count"] = pd.to_numeric(df_filtered["count"], errors="coerce")
+
+    fig = px.line(
+        df_filtered,
+        x="id",
+        y="count",
+        color="category_name",
+        markers=True,
+        title="Category Counts Over Time",
+    )
 
     return fig
 

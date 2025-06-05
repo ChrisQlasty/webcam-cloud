@@ -12,7 +12,7 @@
 
 # Usage
 
-## Prerequisities:
+## Prerequisites:
 
 1. AWS IAM user set up
 2. Configured AWS CLI client (```aws configure```)

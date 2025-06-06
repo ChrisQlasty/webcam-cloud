@@ -35,10 +35,14 @@ app.title = "webcam-cloud dashboard"
 
 # --- Layout Definition ---
 app.layout = html.Div(
-    [
+    children=[
         html.H1(
             "webcam-cloud dashboard",
-            style={"textAlign": "center", "marginBottom": "30px"},
+            style={
+                "textAlign": "center",
+                "marginBottom": "30px",
+                "font-family": "Roboto, sans-serif",
+            },
         ),
         html.Div(
             style={"textAlign": "center", "marginBottom": "20px"},
@@ -140,7 +144,10 @@ app.layout = html.Div(
                 ),
             ],
         ),
-    ]
+    ],
+    style={
+        "backgroundColor": "#e6e5e5cc",
+    },
 )
 
 

@@ -1,5 +1,3 @@
-import io
-import json
 import logging
 import os
 import re
@@ -9,9 +7,8 @@ from decimal import Decimal
 import boto3
 import numpy as np
 import pandas as pd
-from PIL import Image
 
-from utils.aws_cloud import mv_files_to_bucket
+from utils.aws_cloud import load_jpeg_from_s3, load_json_from_s3, mv_files_to_bucket
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -50,13 +47,9 @@ def get_filename(filename: str) -> str:
     return dt_key
 
 
-def proc_json(fv, bucket, dt_key):
-    """Process JSON file with predictions and store aggregated data in DynamoDB"""
-    json_key = fv["json_key"]
-    logger.info(f"Processing JSON file: {json_key}")
-    json_obj = s3.get_object(Bucket=bucket, Key=json_key)
-    json_content = json_obj["Body"].read().decode("utf-8")
-    metadata = json.loads(json_content)
+def proc_json(metadata, dt_key):
+    """Process predictions metadata and store aggregated data in DynamoDB"""
+    logger.info("Processing JSON metadata")
 
     df = pd.DataFrame(metadata)
     agg_df = df.groupby("category_name").agg(
@@ -77,14 +70,9 @@ def proc_json(fv, bucket, dt_key):
                 table.put_item(Item=item)
 
 
-def proc_jpeg(fv, bucket, dt_key):
-    """Process JPEG file and calculate mean brightness, store in DynamoDB"""
-    jpeg_key = fv["jpeg_key"]
-    logger.info(f"Processing JPEG file: {jpeg_key}")
-    jpeg_obj = s3.get_object(Bucket=bucket, Key=jpeg_key)
-    image_bytes = jpeg_obj["Body"].read()
-    image_stream = io.BytesIO(image_bytes)
-    image = np.array(Image.open(image_stream))
+def proc_jpeg(image: np.ndarray, dt_key: str):
+    """Process image and calculate mean brightness, store in DynamoDB"""
+    logger.info("Processing JPEG image")
 
     brightness = image.mean()
 
@@ -124,10 +112,12 @@ def feed_db_with_preds(bucket, prefix):
         dt_key = get_filename(unique_id)
 
         if "json_key" in fv:
-            proc_json(fv, bucket, dt_key)
+            metadata = load_json_from_s3(s3, bucket, fv["json_key"])
+            proc_json(metadata, dt_key)
 
         if "jpeg_key" in fv:
-            proc_jpeg(fv, bucket, dt_key)
+            image = load_jpeg_from_s3(s3, bucket, fv["jpeg_key"])
+            proc_jpeg(image, dt_key)
 
 
 def lambda_handler(event, context):

@@ -1,5 +1,4 @@
 import os
-import random
 
 import boto3
 import dash
@@ -236,7 +235,7 @@ app.layout = html.Div(
                         ),
                     ],
                 ),
-                # Top-Right Cell: Chart 2 (Original dummy chart, moved from bottom-left)
+                # Top-Right Cell: New Scatter Plot
                 html.Div(
                     style={
                         "backgroundColor": "#f9f9f9",
@@ -249,7 +248,7 @@ app.layout = html.Div(
                         )
                     ],
                 ),
-                # Bottom-Left Cell: Chart 1 (Category Counts, moved from top-right)
+                # Bottom-Left Cell: Chart 1 (Category Counts)
                 html.Div(
                     style={
                         "backgroundColor": "#f9f9f9",
@@ -263,7 +262,7 @@ app.layout = html.Div(
                         )
                     ],
                 ),
-                # Bottom-Right Cell: Mean Brightness Chart (New chart, replacing chart-3)
+                # Bottom-Right Cell: Mean Brightness Chart
                 html.Div(
                     style={
                         "backgroundColor": "#f9f9f9",
@@ -272,7 +271,7 @@ app.layout = html.Div(
                     },
                     children=[
                         dcc.Graph(
-                            id="mean_brightness_graph",  # Changed ID
+                            id="mean_brightness_graph",
                             style={"height": "100%", "width": "100%"},
                         )
                     ],
@@ -410,18 +409,56 @@ def update_webcam_feed(
     Output("mean_brightness_graph", "figure"),
     Input("image-slider", "drag_value"),
     Input("refresh-btn", "n_clicks"),
-    Input(
-        "image-url-refresh-interval", "n_intervals"
-    ),  # Use the same interval that refreshes image URL
+    Input("image-url-refresh-interval", "n_intervals"),
+    State("image-keys-store", "data"),
+    State("image-slider", "value"),
 )
-def update_graphs(drag_value, n_clicks_refresh, n_intervals_url):
+def update_graphs(
+    drag_value, n_clicks_refresh, n_intervals_url, image_keys_data, current_slider_value
+):
     print(
         f"Triggered: update_graphs (drag_value={drag_value}, refresh_btn={n_clicks_refresh}, interval={n_intervals_url})"
     )
     df = fetch_data()
-    update_trigger_count = n_clicks_refresh + n_intervals_url
 
-    # Cat Count Graph
+    # --- Determine Selected Timestamp for filtering ---
+    selected_timestamp_dt = None
+    selected_timestamp_str = "N/A"
+    if image_keys_data:
+        effective_slider_value = (
+            drag_value if drag_value is not None else current_slider_value
+        )
+        if 0 <= effective_slider_value < len(image_keys_data):
+            selected_image_info = image_keys_data[effective_slider_value]
+            timestamp_str_from_key = (
+                selected_image_info["key"].split("image_")[-1].split(".jpg")[0]
+            )
+            try:
+                selected_timestamp_dt = pd.to_datetime(
+                    timestamp_str_from_key, format="%Y-%m-%d_%H:%M:%S"
+                )
+                selected_timestamp_str = selected_timestamp_dt.strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+            except ValueError:
+                print(
+                    f"Could not parse timestamp from key: {selected_image_info['key']}"
+                )
+        elif (
+            image_keys_data
+        ):  # If invalid slider value, default to latest for timestamp string
+            latest_image_key = image_keys_data[-1]["key"]
+            selected_timestamp_str = latest_image_key.split("image_")[-1].split(".jpg")[
+                0
+            ]
+            try:
+                selected_timestamp_dt = pd.to_datetime(
+                    selected_timestamp_str, format="%Y-%m-%d_%H:%M:%S"
+                )
+            except ValueError:
+                pass  # Already handled, or will be caught by df.empty check
+
+    # Cat Count Graph (Bottom-Left)
     if df.empty:
         fig_cat_count = px.scatter(title="No Data Available for Category Counts")
     else:
@@ -439,22 +476,54 @@ def update_graphs(drag_value, n_clicks_refresh, n_intervals_url):
             margin={"r": 0, "t": 40, "l": 0, "b": 0}, title_x=0.5
         )
 
-    # Dummy data for Chart 2
-    df_dummy = pd.DataFrame(
-        {
-            "x": [1, 2, 3, 4, 5],
-            "y1": [random.randint(10, 50) for _ in range(5)],
-            "y2": [random.randint(20, 60) for _ in range(5)],
-            "y3": [random.randint(5, 40) for _ in range(5)],
-        }
-    )
-    fig_chart2 = px.line(
-        df_dummy,
-        x="x",
-        y="y2",
-        title=f"Sensor Readings (Updates: {update_trigger_count})",
-    )
-    fig_chart2.update_layout(margin={"r": 0, "t": 40, "l": 0, "b": 0}, title_x=0.5)
+    # New Scatter Plot (Top-Right, formerly chart-2)
+    fig_new_scatter = px.scatter(title="No Data for Object Properties")
+    if not df.empty and selected_timestamp_dt:
+        # Filter df for the selected timestamp AND exclude 'whole_image' category
+        df_scatter_data = df[
+            (df["id"] == selected_timestamp_dt) & (df["category_name"] != "whole_image")
+        ].copy()
+
+        if not df_scatter_data.empty:
+            # Ensure numeric types
+            df_scatter_data["mean_area"] = pd.to_numeric(
+                df_scatter_data["mean_area"], errors="coerce"
+            )
+            df_scatter_data["count"] = pd.to_numeric(
+                df_scatter_data["count"], errors="coerce"
+            )
+            df_scatter_data["mean_score"] = pd.to_numeric(
+                df_scatter_data["mean_score"], errors="coerce"
+            )
+
+            # Remove rows with NaN in relevant columns if they are critical for plotting
+            df_scatter_data.dropna(
+                subset=["mean_area", "count", "mean_score"], inplace=True
+            )
+
+            if not df_scatter_data.empty:
+                fig_new_scatter = px.scatter(
+                    df_scatter_data,
+                    x="mean_area",
+                    y="count",
+                    size="mean_score",
+                    color="category_name",  # Color by category for better insights
+                    hover_name="category_name",
+                    title=f"Objects: Area, Count, Score for {selected_timestamp_str}",
+                )
+                fig_new_scatter.update_layout(
+                    margin={"r": 0, "t": 40, "l": 0, "b": 0}, title_x=0.5
+                )
+            else:
+                fig_new_scatter = px.scatter(
+                    title=f"No valid object data for {selected_timestamp_str}"
+                )
+        else:
+            fig_new_scatter = px.scatter(
+                title=f"No object detection data for {selected_timestamp_str}"
+            )
+    elif not df.empty:
+        fig_new_scatter = px.scatter(title="Select an image to view object properties")
 
     # Mean Brightness Graph
     if df.empty:
@@ -481,7 +550,7 @@ def update_graphs(drag_value, n_clicks_refresh, n_intervals_url):
                 title="No 'whole_image' data for Mean Brightness"
             )
 
-    return fig_cat_count, fig_chart2, fig_mean_brightness
+    return fig_cat_count, fig_new_scatter, fig_mean_brightness
 
 
 if __name__ == "__main__":

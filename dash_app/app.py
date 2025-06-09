@@ -168,7 +168,7 @@ app.layout = html.Div(
                             max=0,
                             value=0,
                             marks={},  # Empty marks initially, populated by callback
-                            step=1,  # <--- FIXED: Set step to 1
+                            step=1,
                             disabled=True,  # Disable until images are loaded
                             tooltip={
                                 "placement": "bottom",
@@ -215,11 +215,11 @@ app.layout = html.Div(
                             children="Loading Image...",  # Initial title
                             style={
                                 "fontWeight": "bold",
-                                "marginBottom": "5px",  # <--- FIXED: Reduced margin
-                                "fontSize": "1em",  # <--- FIXED: Slightly smaller font
+                                "marginBottom": "5px",
+                                "fontSize": "1em",
                                 "textAlign": "center",
-                                "width": "100%",  # Ensure it takes full width for wrapping
-                                "wordWrap": "break-word",  # Ensure long words break
+                                "width": "100%",
+                                "wordWrap": "break-word",
                             },
                         ),
                         html.Img(
@@ -228,15 +228,28 @@ app.layout = html.Div(
                             alt="Webcam Feed",
                             style={
                                 "maxWidth": "100%",
-                                "maxHeight": "calc(100% - 30px)",  # <--- FIXED: Calc to leave space for title + buffer
+                                "maxHeight": "calc(100% - 30px)",
                                 "objectFit": "contain",
-                                "flexGrow": 0,  # Don't grow indefinitely, respect maxHeight
-                                "flexShrink": 1,  # Allow shrinking if necessary
+                                "flexGrow": 0,
+                                "flexShrink": 1,
                             },
                         ),
                     ],
                 ),
-                # Top-Right Cell: Chart 1 (Category Counts)
+                # Top-Right Cell: Chart 2 (Original dummy chart, moved from bottom-left)
+                html.Div(
+                    style={
+                        "backgroundColor": "#f9f9f9",
+                        "borderRadius": "8px",
+                        "border": "1px solid #eee",
+                    },
+                    children=[
+                        dcc.Graph(
+                            id="chart-2", style={"height": "100%", "width": "100%"}
+                        )
+                    ],
+                ),
+                # Bottom-Left Cell: Chart 1 (Category Counts, moved from top-right)
                 html.Div(
                     style={
                         "backgroundColor": "#f9f9f9",
@@ -250,7 +263,7 @@ app.layout = html.Div(
                         )
                     ],
                 ),
-                # Bottom-Left Cell: Chart 2 (Dummy chart)
+                # Bottom-Right Cell: Mean Brightness Chart (New chart, replacing chart-3)
                 html.Div(
                     style={
                         "backgroundColor": "#f9f9f9",
@@ -259,20 +272,8 @@ app.layout = html.Div(
                     },
                     children=[
                         dcc.Graph(
-                            id="chart-2", style={"height": "100%", "width": "100%"}
-                        )
-                    ],
-                ),
-                # Bottom-Right Cell: Chart 3 (Dummy chart)
-                html.Div(
-                    style={
-                        "backgroundColor": "#f9f9f9",
-                        "borderRadius": "8px",
-                        "border": "1px solid #eee",
-                    },
-                    children=[
-                        dcc.Graph(
-                            id="chart-3", style={"height": "100%", "width": "100%"}
+                            id="mean_brightness_graph",  # Changed ID
+                            style={"height": "100%", "width": "100%"},
                         )
                     ],
                 ),
@@ -339,7 +340,7 @@ def update_image_list_and_slider(n_intervals_list, n_clicks_refresh):
             if (
                 i % step_for_marks == 0 or i == num_images - 1
             ):  # Always include first and last
-                marks[i] = {"label": ""}  # <--- FIXED: Empty label for marks
+                marks[i] = {"label": ""}  # Empty label for marks
     else:  # Case for num_images = 0 (though already handled above)
         marks[0] = {"label": ""}
 
@@ -392,7 +393,7 @@ def update_webcam_feed(
     image_timestamp = selected_image_info["key"].split("image_")[-1].split(".jpg")[0]
 
     # Format timestamp for display
-    title_text = f"Image taken: {image_timestamp} "  # .strftime('%Y-%m-%d %H:%M:%S')}"
+    title_text = f"Image taken: {image_timestamp} "
 
     # Generate pre-signed URL
     image_src = get_s3_presigned_url(
@@ -406,16 +407,16 @@ def update_webcam_feed(
 @app.callback(
     Output("cat_count_graph", "figure"),
     Output("chart-2", "figure"),
-    Output("chart-3", "figure"),
+    Output("mean_brightness_graph", "figure"),
     Input("image-slider", "drag_value"),
     Input("refresh-btn", "n_clicks"),
     Input(
         "image-url-refresh-interval", "n_intervals"
     ),  # Use the same interval that refreshes image URL
 )
-def update_graphs(n_clicks_refresh, n_intervals_url, drag_value):
+def update_graphs(drag_value, n_clicks_refresh, n_intervals_url):
     print(
-        f"Triggered: update_graphs (refresh_btn={n_clicks_refresh}, interval={n_intervals_url})"
+        f"Triggered: update_graphs (drag_value={drag_value}, refresh_btn={n_clicks_refresh}, interval={n_intervals_url})"
     )
     df = fetch_data()
     update_trigger_count = n_clicks_refresh + n_intervals_url
@@ -424,7 +425,7 @@ def update_graphs(n_clicks_refresh, n_intervals_url, drag_value):
     if df.empty:
         fig_cat_count = px.scatter(title="No Data Available for Category Counts")
     else:
-        df_filtered = df[df["category_name"] != "whole_image"]
+        df_filtered = df[df["category_name"] != "whole_image"].copy()
         df_filtered["count"] = pd.to_numeric(df_filtered["count"], errors="coerce")
         fig_cat_count = px.line(
             df_filtered,
@@ -438,7 +439,7 @@ def update_graphs(n_clicks_refresh, n_intervals_url, drag_value):
             margin={"r": 0, "t": 40, "l": 0, "b": 0}, title_x=0.5
         )
 
-    # Dummy data for Chart 2 & 3
+    # Dummy data for Chart 2
     df_dummy = pd.DataFrame(
         {
             "x": [1, 2, 3, 4, 5],
@@ -453,14 +454,34 @@ def update_graphs(n_clicks_refresh, n_intervals_url, drag_value):
         y="y2",
         title=f"Sensor Readings (Updates: {update_trigger_count})",
     )
-    fig_chart3 = px.scatter(
-        df_dummy, x="x", y="y3", title=f"Event Counts (Updates: {update_trigger_count})"
-    )
-
     fig_chart2.update_layout(margin={"r": 0, "t": 40, "l": 0, "b": 0}, title_x=0.5)
-    fig_chart3.update_layout(margin={"r": 0, "t": 40, "l": 0, "b": 0}, title_x=0.5)
 
-    return fig_cat_count, fig_chart2, fig_chart3
+    # Mean Brightness Graph
+    if df.empty:
+        fig_mean_brightness = px.scatter(title="No Data Available for Mean Brightness")
+    else:
+        # Assuming mean_brightness is associated with 'whole_image' category
+        df_brightness = df[df["category_name"] == "whole_image"].copy()
+        if not df_brightness.empty:
+            df_brightness["mean_brightness"] = pd.to_numeric(
+                df_brightness["mean_brightness"], errors="coerce"
+            )
+            fig_mean_brightness = px.line(
+                df_brightness,
+                x="id",
+                y="mean_brightness",
+                title="Mean Brightness Over Time",
+                markers=True,
+            )
+            fig_mean_brightness.update_layout(
+                margin={"r": 0, "t": 40, "l": 0, "b": 0}, title_x=0.5
+            )
+        else:
+            fig_mean_brightness = px.scatter(
+                title="No 'whole_image' data for Mean Brightness"
+            )
+
+    return fig_cat_count, fig_chart2, fig_mean_brightness
 
 
 if __name__ == "__main__":

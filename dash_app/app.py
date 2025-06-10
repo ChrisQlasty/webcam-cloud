@@ -16,9 +16,10 @@ from utils.aws_cloud import load_jpeg_from_s3, load_json_from_s3
 # --- AWS Configuration ---
 REGION_NAME = os.getenv("TF_VAR_region", "us-east-1")
 SRC_TABLE = os.getenv("TF_VAR_db_img_stats_table", "your_dynamodb_table_name")
+S3_BUCKET_NAME = os.getenv("TF_VAR_processed_bucket")
+DEBUG = os.getenv("DASH_debug", "false").lower() in ("true", "1", "t")
 
-S3_BUCKET_NAME = "qla-processed"  # Your S3 bucket name (no s3://, no trailing /)
-S3_FOLDER_PREFIX = "processed/"  # The "folder" within your S3 bucket where images are stored (e.g., "processed/")
+S3_FOLDER_PREFIX = "processed/"
 
 # This image key is used as a fallback if no images are found in the bucket.
 # Ensure you have a placeholder image in your 'assets' folder for errors.
@@ -134,6 +135,7 @@ def fetch_data():
 # --- Dash App Initialization ---
 app = dash.Dash(__name__)
 app.title = "webcam-cloud dashboard"
+server = app.server
 
 # --- Layout Definition ---
 app.layout = html.Div(
@@ -705,4 +707,4 @@ def update_graphs(
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=DEBUG)

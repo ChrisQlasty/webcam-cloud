@@ -5,6 +5,7 @@ import os
 import boto3
 import dash
 import pandas as pd
+import plotly.colors
 import plotly.express as px
 import plotly.graph_objects as go
 from dash import Input, Output, State, callback, dcc, html
@@ -95,7 +96,7 @@ def get_s3_image_keys_and_timestamps(bucket_name, prefix):
 
 # --- DynamoDB Function ---
 def fetch_data():
-    """Fetches data from DynamoDB and returns a pandas DataFrame."""
+    """Fetches data from DynamoDB and returns a pandas DataFrame and distinct category names."""
     try:
         response = table.scan()
         items = response["Items"]
@@ -114,10 +115,20 @@ def fetch_data():
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
 
-        return df
+        # Extract distinct category names (excluding 'whole_image')
+        distinct_categories = (
+            df["category_name"].dropna().unique().tolist()
+            if "category_name" in df.columns
+            else []
+        )
+        distinct_categories = [
+            cat for cat in distinct_categories if cat != "whole_image"
+        ]
+
+        return df, distinct_categories
     except Exception as e:
         print(f"Error fetching data from DynamoDB: {e}")
-        return pd.DataFrame()
+        return pd.DataFrame(), []
 
 
 # --- Dash App Initialization ---
@@ -296,6 +307,19 @@ app.layout = html.Div(
     },
 )
 
+
+# --- Generate a color mapping for categories ---
+def generate_color_mapping(categories):
+    color_palette = (
+        plotly.colors.qualitative.Set1
+    )  # Use a predefined Plotly color palette
+    color_mapping = {
+        category: color_palette[i % len(color_palette)]
+        for i, category in enumerate(categories)
+    }
+    return color_mapping
+
+
 # --- Callbacks ---
 
 
@@ -458,15 +482,18 @@ def update_webcam_graph_and_data(
         )
     )
 
-    # Add shapes (bounding boxes) if data and dimensions are available
+    # Generate color mapping
+    _, distinct_categories = fetch_data()
+    color_mapping = generate_color_mapping(distinct_categories)
+
+    # Add shapes (bounding boxes) with consistent colors
     shapes = []
     if bbox_data_raw and img_width is not None and img_height is not None:
         for box_info in bbox_data_raw:
             # bbox is [x, y, width, height] in pixel coordinates (y=0 top)
             x, y, w, h = box_info["bbox"]
-            label = box_info.get(
-                "category_name", "unknown"
-            )  # Use category_name as label
+            label = box_info.get("category_name", "unknown")
+            color = color_mapping.get(label, "red")  # Default to red if label not found
 
             # Convert pixel coordinates [x, y, w, h] to relative [x0, y0, x1, y1] (y=0 top)
             x0_rel = x / img_width
@@ -479,7 +506,6 @@ def update_webcam_graph_and_data(
             y0_plotly = 1 - y1_rel  # Plotly y0 is bottom edge
             x1_plotly = x1_rel
             y1_plotly = 1 - y0_rel  # Plotly y1 is top edge
-
             shapes.append(
                 dict(
                     type="rect",
@@ -489,7 +515,7 @@ def update_webcam_graph_and_data(
                     y0=y0_plotly,
                     x1=x1_plotly,
                     y1=y1_plotly,
-                    line=dict(color="red", width=3),
+                    line=dict(color=color, width=3),
                     opacity=0.7,
                 )
             )
@@ -539,7 +565,8 @@ def update_graphs(
     print(
         f"Triggered: update_graphs (drag_value={drag_value}, refresh_btn={n_clicks_refresh}, interval={n_intervals_url})"
     )
-    df = fetch_data()
+    df, distinct_categories = fetch_data()
+    color_mapping = generate_color_mapping(distinct_categories)
 
     # --- Determine Selected Timestamp for filtering ---
     selected_timestamp_dt = None
@@ -584,11 +611,13 @@ def update_graphs(
     else:
         df_filtered = df[df["category_name"] != "whole_image"].copy()
         df_filtered["count"] = pd.to_numeric(df_filtered["count"], errors="coerce")
+        df_filtered = df_filtered.sort_values(by=["category_name", "id"])
         fig_cat_count = px.line(
             df_filtered,
             x="id",
             y="count",
             color="category_name",
+            color_discrete_map=color_mapping,
             markers=True,
             title="Category Counts Over Time",
         )
@@ -620,6 +649,7 @@ def update_graphs(
             df_scatter_data.dropna(
                 subset=["mean_area", "count", "mean_score"], inplace=True
             )
+            df_scatter_data = df_scatter_data.sort_values(by="category_name")
 
             if not df_scatter_data.empty:
                 fig_new_scatter = px.scatter(
@@ -628,6 +658,7 @@ def update_graphs(
                     y="count",
                     size="mean_score",
                     color="category_name",  # Color by category for better insights
+                    color_discrete_map=color_mapping,
                     hover_name="category_name",
                     title=f"Objects: Area, Count, Score for {selected_timestamp_str}",
                 )

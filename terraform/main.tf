@@ -270,12 +270,11 @@ data "aws_ecr_image" "latest_lambda2_image" {
 
 # Lambda 2: summary function
 resource "aws_lambda_function" "lambda2" {
-  function_name    = var.lambda2
-  role             = aws_iam_role.lambda2_exec_role.arn
-  package_type     = "Image"
-  image_uri        = data.aws_ecr_image.latest_lambda2_image.image_uri
-  timeout          = 20
-  source_code_hash = filebase64sha256(local.lambda2_zip_path)
+  function_name = var.lambda2
+  role          = aws_iam_role.lambda2_exec_role.arn
+  package_type  = "Image"
+  image_uri     = data.aws_ecr_image.latest_lambda2_image.image_uri
+  timeout       = 20
   environment {
     variables = {
       TF_VAR_input_bucket       = var.input_bucket
@@ -412,3 +411,130 @@ resource "aws_dynamodb_table" "image_stats" {
     type = "S"
   }
 }
+
+# IAM Role for EC2
+resource "aws_iam_role" "ec2_instance_role" {
+  name = "dash-ec2-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      },
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "ec2_policy" {
+  name = "dash-ec2-access"
+  role = aws_iam_role.ec2_instance_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage"
+        ],
+        Resource = "arn:aws:ecr:${var.region}:${var.aws_account_id}:repository/${var.dash_image}"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "ecr:GetAuthorizationToken"
+        ],
+        Resource = "*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "s3:GetObject",
+          "s3:ListBucket",
+        ],
+        Resource = [
+          "${aws_s3_bucket.processed_bucket.arn}",
+          "${aws_s3_bucket.processed_bucket.arn}/*",
+        ]
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "dynamodb:Scan",
+        ],
+        Resource = aws_dynamodb_table.image_stats.arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_instance_profile" "ec2_instance_profile" {
+  name = "dash-instance-profile"
+  role = aws_iam_role.ec2_instance_role.name
+}
+
+# Security Group
+resource "aws_security_group" "dash_sg" {
+  name        = "dash-sg"
+  description = "Allow HTTP traffic"
+  vpc_id      = data.aws_vpc.default.id
+
+  ingress {
+    from_port   = 8050
+    to_port     = 8050
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# Get Latest Amazon Linux 2 AMI
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+  owners      = ["amazon"]
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  }
+}
+
+# Get Default VPC
+data "aws_vpc" "default" {
+  default = true
+}
+
+# EC2 Instance
+resource "aws_instance" "dash_instance" {
+  ami                    = data.aws_ami.amazon_linux.id
+  instance_type          = var.instance_type
+  key_name               = var.key_name
+  vpc_security_group_ids = [aws_security_group.dash_sg.id]
+  iam_instance_profile   = aws_iam_instance_profile.ec2_instance_profile.name
+
+  user_data = templatefile("${path.module}/startup.sh.tpl", {
+    region          = var.region
+    aws_account_id  = var.aws_account_id
+    dash_image      = var.dash_image
+  })
+
+  tags = {
+    Name = "dash-app"
+  }
+}
+

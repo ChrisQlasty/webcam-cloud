@@ -151,17 +151,6 @@ app.layout = html.Div(
         html.Div(
             style={"textAlign": "center", "marginBottom": "20px"},
             children=[
-                html.Button(
-                    "Refresh Data",
-                    id="refresh-btn",
-                    n_clicks=0,
-                    style={
-                        "padding": "10px 20px",
-                        "fontSize": "16px",
-                        "cursor": "pointer",
-                        "marginRight": "10px",
-                    },
-                ),
                 # Slider to select image
                 html.Div(
                     style={"width": "80%", "margin": "20px auto"},
@@ -334,12 +323,9 @@ def generate_color_mapping(categories):
     Output("image-slider", "marks"),
     Output("image-slider", "disabled"),
     Input("image-list-update-interval", "n_intervals"),
-    Input("refresh-btn", "n_clicks"),  # Also refresh list on manual refresh
 )
-def update_image_list_and_slider(n_intervals_list, n_clicks_refresh):
-    print(
-        f"Triggered: update_image_list_and_slider (interval={n_intervals_list}, refresh_btn={n_clicks_refresh})"
-    )
+def update_image_list_and_slider(n_intervals_list):
+    print(f"Triggered: update_image_list_and_slider (interval={n_intervals_list})")
     image_data = get_s3_image_keys_and_timestamps(S3_BUCKET_NAME, S3_FOLDER_PREFIX)
 
     if not image_data:
@@ -556,16 +542,13 @@ def update_webcam_graph_and_data(
     Output("chart-2", "figure"),
     Output("mean_brightness_graph", "figure"),
     Input("image-slider", "drag_value"),
-    Input("refresh-btn", "n_clicks"),
     Input("image-url-refresh-interval", "n_intervals"),
     State("image-keys-store", "data"),
     State("image-slider", "value"),
 )
-def update_graphs(
-    drag_value, n_clicks_refresh, n_intervals_url, image_keys_data, current_slider_value
-):
+def update_graphs(drag_value, n_intervals_url, image_keys_data, current_slider_value):
     print(
-        f"Triggered: update_graphs (drag_value={drag_value}, refresh_btn={n_clicks_refresh}, interval={n_intervals_url})"
+        f"Triggered: update_graphs (drag_value={drag_value}, interval={n_intervals_url})"
     )
     df, distinct_categories = fetch_data()
     color_mapping = generate_color_mapping(distinct_categories)

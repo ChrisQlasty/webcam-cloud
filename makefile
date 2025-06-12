@@ -32,8 +32,8 @@ prep_endpoint_image:
 
 
 prep_lambda:
-	mkdir -p cloud_resources
-	zip cloud_resources/lambda1.zip modules/lambda1.py
+        mkdir -p cloud_resources
+        zip cloud_resources/lambda1.zip modules/lambda1.py modules/constants.py
 
 aws_apply:
 	cd terraform && \

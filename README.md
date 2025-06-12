@@ -37,6 +37,11 @@ TF_VAR_lambda2_image="lambda2-image"
 TF_VAR_obj_det_model="object-det-model"
 ```
 
+Folder names for processed files, unprocessed files and the list of object
+categories used in analytics are defined in `modules/constants.py`. Update this
+file if you need to customize them. After editing this file, run `make prep_lambda`
+to rebuild the Lambda package so that your changes are included.
+
 
 ## Setting everything up
 

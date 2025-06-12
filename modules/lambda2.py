@@ -8,7 +8,12 @@ import boto3
 import numpy as np
 import pandas as pd
 
-from utils.aws_cloud import load_jpeg_from_s3, load_json_from_s3, mv_files_to_bucket
+from utils.aws_cloud import (
+    load_jpeg_from_s3,
+    load_json_from_s3,
+    mv_files_to_bucket,
+)
+from modules.constants import ALLOWED_CATEGORIES, PROCESSED_FOLDER, UNPROCESSED_FOLDER
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,19 +22,8 @@ logger = logging.getLogger(__name__)
 SOURCE_BUCKET = os.getenv("TF_VAR_input_bucket")
 DEST_BUCKET = os.getenv("TF_VAR_processed_bucket")
 DEST_TABLE = os.getenv("TF_VAR_db_img_stats_table")
-UNPROCESSED_FOLDER = "unprocessed"
-PROCESSED_FOLDER = "processed"
 
 WRITE_TO_DB = True
-
-ALLOWED_CATEGORIES = [
-    "person",
-    "bicycle",
-    "car",
-    "motorcycle",
-    "bus",
-    "truck",
-]
 
 s3 = boto3.client("s3")
 dynamodb = boto3.resource("dynamodb")

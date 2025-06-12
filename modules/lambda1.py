@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 dynamodb = boto3.resource("dynamodb")
 lambda_client = boto3.client("lambda")
 
-BATCH_SIZE = 2
+BATCH_SIZE = 20
 TABLE_NAME = os.getenv("TF_VAR_db_table")
 SOURCE_BUCKET = os.getenv("TF_VAR_input_bucket")
 DEST_BUCKET = os.getenv("TF_VAR_processed_bucket")
@@ -72,10 +72,9 @@ def lambda_handler(event, context):
 
                 # Reset batch
                 table.put_item(Item={"batch_id": "current", "images": []})
-                # TODO: trigger another Lambda when job is finished
                 return call_batch_transform_job()
     except Exception as e:
-        print(f"Error processing event: {e}")
+        logger.info(f"Error processing event: {e}")
         return {"statusCode": 500, "body": str(e)}
 
     return {"statusCode": 200}

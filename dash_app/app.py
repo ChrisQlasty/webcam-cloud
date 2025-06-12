@@ -1,5 +1,6 @@
 import base64
 import io
+import logging
 import os
 
 import boto3
@@ -12,6 +13,10 @@ from dash import Input, Output, State, callback, dcc, html
 from PIL import Image
 
 from utils.aws_cloud import load_jpeg_from_s3, load_json_from_s3
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 # --- AWS Configuration ---
 REGION_NAME = os.getenv("TF_VAR_region", "us-east-1")
@@ -41,7 +46,7 @@ def get_s3_image_keys_and_timestamps(bucket_name, prefix):
     Returns a list of dictionaries: [{'key': 'obj_key', 'last_modified': datetime_obj}, ...]
     """
     image_data = []
-    print(
+    logger.info(
         f"Attempting to list S3 objects in bucket: '{bucket_name}' with prefix: '{prefix}'"
     )
     try:
@@ -60,38 +65,38 @@ def get_s3_image_keys_and_timestamps(bucket_name, prefix):
             else:
                 # This message indicates that no 'Contents' section was found in a page response,
                 # which is normal for an empty prefix/bucket, or if there are no matching files.
-                print(
+                logger.info(
                     f"No 'Contents' found for prefix '{prefix}' or no matching files in a page."
                 )
 
         # Sort images by their LastModified timestamp (oldest first for slider)
         image_data.sort(key=lambda x: x["last_modified"], reverse=False)
 
-        print(f"Found {len(image_data)} .jpg images in '{bucket_name}/{prefix}'.")
+        logger.info(f"Found {len(image_data)} .jpg images in '{bucket_name}/{prefix}'.")
         if image_data:
-            print(
+            logger.info(
                 f"First image: {image_data[0]['key']} ({image_data[0]['last_modified']})"
             )
-            print(
+            logger.info(
                 f"Last image: {image_data[-1]['key']} ({image_data[-1]['last_modified']})"
             )
         return image_data
     except boto3.exceptions.ClientError as e:
         if e.response["Error"]["Code"] == "AccessDenied":
-            print(
+            logger.info(
                 f"AWS S3 Access Denied: Check your IAM permissions for 's3:ListBucket' on '{bucket_name}'. Error: {e}"
             )
         elif e.response["Error"]["Code"] == "NoSuchBucket":
-            print(
+            logger.info(
                 f"AWS S3 Error: Bucket '{bucket_name}' does not exist or you don't have access. Error: {e}"
             )
             # Add a print statement for the full error response for debugging
-            print(f"Full error response: {e.response}")
+            logger.info(f"Full error response: {e.response}")
         else:
-            print(f"An S3 client error occurred listing objects: {e}")
+            logger.info(f"An S3 client error occurred listing objects: {e}")
         return []
     except Exception as e:
-        print(f"An unexpected error occurred listing S3 objects: {e}")
+        logger.info(f"An unexpected error occurred listing S3 objects: {e}")
         return []
 
 
@@ -128,7 +133,7 @@ def fetch_data():
 
         return df, distinct_categories
     except Exception as e:
-        print(f"Error fetching data from DynamoDB: {e}")
+        logger.info(f"Error fetching data from DynamoDB: {e}")
         return pd.DataFrame(), []
 
 
@@ -325,11 +330,13 @@ def generate_color_mapping(categories):
     Input("image-list-update-interval", "n_intervals"),
 )
 def update_image_list_and_slider(n_intervals_list):
-    print(f"Triggered: update_image_list_and_slider (interval={n_intervals_list})")
+    logger.info(
+        f"Triggered: update_image_list_and_slider (interval={n_intervals_list})"
+    )
     image_data = get_s3_image_keys_and_timestamps(S3_BUCKET_NAME, S3_FOLDER_PREFIX)
 
     if not image_data:
-        print("No images found in S3 bucket/prefix. Slider disabled.")
+        logger.info("No images found in S3 bucket/prefix. Slider disabled.")
         return (
             [],
             0,
@@ -374,12 +381,12 @@ def update_image_list_and_slider(n_intervals_list):
 def update_webcam_graph_and_data(
     drag_value, n_intervals_url, image_keys_data, current_slider_value
 ):
-    print(
+    logger.info(
         f"Triggered: update_webcam_graph_and_data (drag_value={drag_value}, url_refresh={n_intervals_url})"
     )
 
     if not image_keys_data:
-        print("Image keys data is empty. Displaying error placeholder.")
+        logger.info("Image keys data is empty. Displaying error placeholder.")
         # Return a figure with the fallback image
         fig = go.Figure()
         fig.add_layout_image(
@@ -413,7 +420,7 @@ def update_webcam_graph_and_data(
     if effective_slider_value is None or not (
         0 <= effective_slider_value < len(image_keys_data)
     ):
-        print(
+        logger.info(
             f"Invalid slider value {effective_slider_value}. Falling back to latest image."
         )
         selected_image_info = image_keys_data[-1]
@@ -443,10 +450,10 @@ def update_webcam_graph_and_data(
         bbox_data_raw = load_json_from_s3(s3, S3_BUCKET_NAME, json_key)
         if bbox_data_raw is None:  # load_json_from_s3 returns None on error
             bbox_data_raw = []
-            print(f"Could not load bbox data from {json_key}")
+            logger.info(f"Could not load bbox data from {json_key}")
 
     except Exception as e:
-        print(
+        logger.info(
             f"Error fetching bbox data or image dimensions for {selected_image_key}: {e}"
         )
         bbox_data_raw = []  # Ensure empty list on error
@@ -547,7 +554,7 @@ def update_webcam_graph_and_data(
     State("image-slider", "value"),
 )
 def update_graphs(drag_value, n_intervals_url, image_keys_data, current_slider_value):
-    print(
+    logger.info(
         f"Triggered: update_graphs (drag_value={drag_value}, interval={n_intervals_url})"
     )
     df, distinct_categories = fetch_data()
@@ -573,7 +580,7 @@ def update_graphs(drag_value, n_intervals_url, image_keys_data, current_slider_v
                     "%Y-%m-%d_%H:%M:%S"
                 )
             except ValueError:
-                print(
+                logger.info(
                     f"Could not parse timestamp from key: {selected_image_info['key']}"
                 )
         elif (

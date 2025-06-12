@@ -4,6 +4,9 @@ version = "0.1.0"
 description = "Webcam stream analytics project"
 readme = "README.md"
 requires-python = ">=3.10"
+dependencies = [
+    "pillow[grabber]>=11.2.1",
+]
 [dependency-groups]
 dev = [
     "awscli>=1.40.12",

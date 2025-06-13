@@ -20,10 +20,10 @@ prep_ecr_repo:
 	aws ecr create-repository --repository-name ${docker_image_name} --region ${TF_VAR_region}
 
 build_arg ?=
-prep_image:
+build_image:
 	docker buildx build --platform=linux/amd64 ${build_arg} -f $(Dockerfile_name) -t ${docker_image_name}:latest .
 
-prep_endpoint_image:
+push_image:
 	: ### Step 1: Tag Your Docker Image for ECR
 	docker tag ${docker_image_name}:latest ${TF_VAR_aws_account_id}.dkr.ecr.${TF_VAR_region}.amazonaws.com/${docker_image_name}:latest && \
 	: ### Step 2: Push the Docker Image to ECR

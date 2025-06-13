@@ -62,8 +62,8 @@ echo $(aws ecr get-login-password --region $TF_VAR_region) | docker login --user
 echo $(aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 763104351884.dkr.ecr.us-east-1.amazonaws.com) && \  
 
 make prep_ecr_repo docker_image_name=$TF_VAR_obj_det_image && \
-make prep_image Dockerfile_name=Dockerfile_Endpoint docker_image_name=$TF_VAR_obj_det_image && \
-make prep_endpoint_image docker_image_name=$TF_VAR_obj_det_image
+make build_image Dockerfile_name=Dockerfile_Endpoint docker_image_name=$TF_VAR_obj_det_image && \
+make push_image docker_image_name=$TF_VAR_obj_det_image
 ```
 
 3. Build Lambda2 Docker image and push to ECR
@@ -72,8 +72,8 @@ make prep_endpoint_image docker_image_name=$TF_VAR_obj_det_image
 echo $(aws ecr get-login-password --region $TF_VAR_region) | docker login --username AWS --password-stdin $TF_VAR_aws_account_id.dkr.ecr.$TF_VAR_region.amazonaws.com && \  
 
 make prep_ecr_repo docker_image_name=$TF_VAR_lambda2_image && \
-make prep_image Dockerfile_name=Dockerfile_Lambda docker_image_name=$TF_VAR_lambda2_image && \
-make prep_endpoint_image docker_image_name=$TF_VAR_lambda2_image
+make build_image Dockerfile_name=Dockerfile_Lambda docker_image_name=$TF_VAR_lambda2_image && \
+make push_image docker_image_name=$TF_VAR_lambda2_image
 ```
 
 4. Build EC2 Docker image and push to ECR
@@ -82,10 +82,10 @@ make prep_endpoint_image docker_image_name=$TF_VAR_lambda2_image
 echo $(aws ecr get-login-password --region $TF_VAR_region) | docker login --username AWS --password-stdin $TF_VAR_aws_account_id.dkr.ecr.$TF_VAR_region.amazonaws.com && \  
 
 make prep_ecr_repo docker_image_name=$TF_VAR_dash_image && \
-make prep_image Dockerfile_name=Dockerfile_EC2 docker_image_name=$TF_VAR_dash_image build_arg="--build-arg TF_VAR_region=$TF_VAR_region \
+make build_image Dockerfile_name=Dockerfile_EC2 docker_image_name=$TF_VAR_dash_image build_arg="--build-arg TF_VAR_region=$TF_VAR_region \
     --build-arg TF_VAR_db_img_stats_table=$TF_VAR_db_img_stats_table \
     --build-arg TF_VAR_processed_bucket=$TF_VAR_processed_bucket" && \
-make prep_endpoint_image docker_image_name=$TF_VAR_dash_image
+make push_image docker_image_name=$TF_VAR_dash_image
 ```
 
 5. Prepare code for AWS Lambda

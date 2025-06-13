@@ -32,8 +32,6 @@ def main(num_frames: int, wait_time: int):
     """Live url frames grab and S3 upload function. Intended to run locally, not
     in the cloud for now."""
 
-    direct_stream_m3u8 = get_direct_stream_url(STREAM_URL)
-
     for _ in range(num_frames):
         timestamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
         filename = f"image_{timestamp}.jpg"
@@ -43,6 +41,7 @@ def main(num_frames: int, wait_time: int):
                 f"Direct m3u8 stream extracted successfully from stream {STREAM_URL}"
             )
 
+            direct_stream_m3u8 = get_direct_stream_url(STREAM_URL)
             frame = capture_frame_with_opencv(stream_url=direct_stream_m3u8)
             logger.info("Frame extracted successfully from m3u8 stream")
 

@@ -10,9 +10,9 @@ import plotly.colors
 import plotly.express as px
 import plotly.graph_objects as go
 from dash import Input, Output, State, callback, dcc, html
-from modules.constants import PROCESSED_FOLDER
 from PIL import Image
 
+from modules.constants import ALLOWED_CATEGORIES, PROCESSED_FOLDER
 from utils.aws_cloud import load_jpeg_from_s3, load_json_from_s3
 
 logging.basicConfig(level=logging.INFO)
@@ -491,6 +491,9 @@ def update_webcam_graph_and_data(
             label = box_info.get("category_name", "unknown")
             color = color_mapping.get(label, "red")  # Default to red if label not found
 
+            if label not in ALLOWED_CATEGORIES:
+                continue
+
             # Convert pixel coordinates [x, y, w, h] to relative [x0, y0, x1, y1] (y=0 top)
             x0_rel = x / img_width
             y0_rel = y / img_height
@@ -515,6 +518,7 @@ def update_webcam_graph_and_data(
                     opacity=0.7,
                 )
             )
+            # Draw label above top-left corner of bbox
             fig.add_annotation(
                 x=x0_plotly,
                 y=y1_plotly,
@@ -523,6 +527,14 @@ def update_webcam_graph_and_data(
                 text=label,
                 showarrow=False,
                 align="left",
+                font=dict(color="white", size=10),
+                bgcolor=color,
+                borderpad=0,
+                bordercolor=color,
+                borderwidth=2,
+                xanchor="left",
+                yanchor="bottom",
+                opacity=0.7,
             )
 
     fig.update_layout(

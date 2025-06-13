@@ -10,6 +10,7 @@ import plotly.colors
 import plotly.express as px
 import plotly.graph_objects as go
 from dash import Input, Output, State, callback, dcc, html
+from modules.constants import PROCESSED_FOLDER
 from PIL import Image
 
 from utils.aws_cloud import load_jpeg_from_s3, load_json_from_s3
@@ -24,7 +25,7 @@ SRC_TABLE = os.getenv("TF_VAR_db_img_stats_table", "your_dynamodb_table_name")
 S3_BUCKET_NAME = os.getenv("TF_VAR_processed_bucket")
 DEBUG = os.getenv("DASH_debug", "false").lower() in ("true", "1", "t")
 
-S3_FOLDER_PREFIX = "processed/"
+S3_FOLDER_PREFIX = f"{PROCESSED_FOLDER}/"
 
 # This image key is used as a fallback if no images are found in the bucket.
 # Ensure you have a placeholder image in your 'assets' folder for errors.

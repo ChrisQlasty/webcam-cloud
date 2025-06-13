@@ -4,14 +4,13 @@ prep_inference_model:
 	: ### Step 2: Remove torch>= from the requirements_temp.txt as is already installed in the base image
 	grep -v 'torch>=' requirements_temp.txt > requirements_endpoint.txt 	
 	rm requirements_temp.txt
-	cd data && \
 	: ### Step 3: Download the YOLOv11n model weights
 	wget https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n.pt && \
 	: ### Step 4: Create a directory structure for the model (see issues in Readme)
 	mkdir -p my_model/code && \
 	mv yolo11n.pt my_model/ && \
-	cp ../modules/inference.py my_model/code/ && \
-	cp ../requirements_endpoint.txt my_model/requirements_endpoint.txt && \
+	cp modules/inference.py my_model/code/ && \
+	cp requirements_endpoint.txt my_model/requirements_endpoint.txt && \
 	tar -czvf model.tar.gz -C my_model . && \
 	: ### Step 5: Upload the model to S3 bucket and clean up
 	aws s3 cp model.tar.gz s3://${TF_VAR_models_bucket}/model_ul/ && \
@@ -30,10 +29,9 @@ prep_endpoint_image:
 	: ### Step 2: Push the Docker Image to ECR
 	docker push ${TF_VAR_aws_account_id}.dkr.ecr.${TF_VAR_region}.amazonaws.com/${docker_image_name}:latest
 
-
 prep_lambda:
 	mkdir -p cloud_resources
-	zip cloud_resources/lambda1.zip modules/lambda1.py
+	zip cloud_resources/lambda1.zip modules/lambda1.py modules/constants.py
 
 aws_apply:
 	cd terraform && \

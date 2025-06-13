@@ -4,6 +4,7 @@ import os
 import uuid
 
 import boto3
+from modules.constants import UNPROCESSED_FOLDER
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -39,7 +40,7 @@ def call_batch_transform_job():
             "ContentType": "application/x-image",
         },
         TransformOutput={
-            "S3OutputPath": f"s3://{DEST_BUCKET}/unprocessed/",
+            "S3OutputPath": f"s3://{DEST_BUCKET}/{UNPROCESSED_FOLDER}/",
             "Accept": "application/json",
         },
         TransformResources={"InstanceType": INSTANCE_TYPE, "InstanceCount": 1},

@@ -34,6 +34,7 @@ TF_VAR_lambda2="lambda-2-name"
 TF_VAR_db_table="table-name"
 TF_VAR_obj_det_image="obj-det-image"
 TF_VAR_lambda2_image="lambda2-image"
+TF_VAR_dash_image="dash-image"
 TF_VAR_obj_det_model="object-det-model"
 ```
 

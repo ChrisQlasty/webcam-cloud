@@ -770,7 +770,15 @@ def update_graphs(selected_rows, n_intervals_url, image_keys_data):
             title="Category Counts Over Time",
         )
         fig_cat_count.update_layout(
-            margin={"r": 0, "t": 40, "l": 0, "b": 0}, title_x=0.5
+            margin={"r": 0, "t": 40, "l": 0, "b": 0},
+            title_x=0.5,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="center",
+                x=0.5,
+            ),
         )
         # Add a vertical line or marker for the selected timestamp
         if selected_timestamp_dt:
@@ -819,7 +827,14 @@ def update_graphs(selected_rows, n_intervals_url, image_keys_data):
                     hover_name="category_name",
                 )
                 fig_new_scatter.update_layout(
-                    margin={"r": 0, "t": 40, "l": 0, "b": 0}, title_x=0.5
+                    margin={"r": 20, "t": 40, "l": 10, "b": 0},
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02,
+                        xanchor="center",
+                        x=0.5,
+                    ),
                 )
     elif not df.empty:
         fig_new_scatter = px.scatter(title="Select an image to view object properties")
@@ -841,7 +856,8 @@ def update_graphs(selected_rows, n_intervals_url, image_keys_data):
                 markers=True,
             )
             fig_mean_brightness.update_layout(
-                margin={"r": 0, "t": 40, "l": 0, "b": 0}, title_x=0.5
+                margin={"r": 20, "t": 40, "l": 10, "b": 0},
+                title_x=0.5,
             )
             # Add a vertical line or marker for the selected timestamp
             if selected_timestamp_dt:

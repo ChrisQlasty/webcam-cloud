@@ -5,11 +5,13 @@ import os
 
 import boto3
 import dash
+import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.colors
 import plotly.express as px
 import plotly.graph_objects as go
 from dash import Input, Output, State, callback, dcc, html
+from dash_bootstrap_templates import load_figure_template
 from PIL import Image
 
 from modules.constants import ALLOWED_CATEGORIES, PROCESSED_FOLDER
@@ -18,6 +20,7 @@ from utils.aws_cloud import load_jpeg_from_s3, load_json_from_s3
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+load_figure_template("SUPERHERO")  # Load the SUPERHERO template for Plotly figures
 
 # --- AWS Configuration ---
 REGION_NAME = os.getenv("TF_VAR_region", "us-east-1")
@@ -139,7 +142,7 @@ def fetch_data():
 
 
 # --- Dash App Initialization ---
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SUPERHERO])
 app.title = "webcam-cloud dashboard"
 server = app.server
 
@@ -199,7 +202,6 @@ app.layout = html.Div(
                 # Top-Left Cell: Image (Webcam Feed)
                 html.Div(
                     style={
-                        "backgroundColor": "#f9f9f9",
                         "display": "flex",
                         "flexDirection": "column",  # Arrange children vertically
                         "justifyContent": "flex-start",  # Align items to the top to give title space
@@ -210,18 +212,6 @@ app.layout = html.Div(
                         "padding": "10px",  # Add some padding inside the cell
                     },
                     children=[
-                        html.Div(
-                            id="webcam-image-title",
-                            children="Loading Image...",  # Initial title
-                            style={
-                                "fontWeight": "bold",
-                                "marginBottom": "5px",
-                                "fontSize": "1em",
-                                "textAlign": "center",
-                                "width": "100%",
-                                "wordWrap": "break-word",
-                            },
-                        ),
                         # Use dcc.Graph instead of html.Img
                         dcc.Graph(
                             id="webcam-graph",
@@ -232,7 +222,7 @@ app.layout = html.Div(
                             },
                             style={
                                 "maxWidth": "100%",
-                                "maxHeight": "calc(100% - 30px)",
+                                "maxHeight": "100%",
                                 # objectFit: 'contain' is handled by layout settings in the figure
                                 "flexGrow": 0,
                                 "flexShrink": 1,
@@ -243,7 +233,6 @@ app.layout = html.Div(
                 # Top-Right Cell: New Scatter Plot
                 html.Div(
                     style={
-                        "backgroundColor": "#f9f9f9",
                         "borderRadius": "8px",
                         "border": "1px solid #eee",
                     },
@@ -256,7 +245,6 @@ app.layout = html.Div(
                 # Bottom-Left Cell: Chart 1 (Category Counts)
                 html.Div(
                     style={
-                        "backgroundColor": "#f9f9f9",
                         "borderRadius": "8px",
                         "border": "1px solid #eee",
                     },
@@ -270,7 +258,6 @@ app.layout = html.Div(
                 # Bottom-Right Cell: Mean Brightness Chart
                 html.Div(
                     style={
-                        "backgroundColor": "#f9f9f9",
                         "borderRadius": "8px",
                         "border": "1px solid #eee",
                     },
@@ -299,9 +286,6 @@ app.layout = html.Div(
             n_intervals=0,
         ),
     ],
-    style={
-        "backgroundColor": "#e6e5e5cc",
-    },
 )
 
 
@@ -372,7 +356,6 @@ def update_image_list_and_slider(n_intervals_list):
 # Callback to update the displayed image, its title, and store bbox data
 @callback(
     Output("webcam-graph", "figure"),  # Outputting the figure for the graph
-    Output("webcam-image-title", "children"),
     Output("bbox-data-store", "data"),  # Outputting bbox data to store
     Input("image-slider", "drag_value"),
     Input("image-url-refresh-interval", "n_intervals"),
@@ -429,9 +412,7 @@ def update_webcam_graph_and_data(
         selected_image_info = image_keys_data[effective_slider_value]
 
     selected_image_key = selected_image_info["key"]
-    image_timestamp = selected_image_info["key"].split("image_")[-1].split(".jpg")[0]
-
-    title_text = f"Image taken: {image_timestamp} "
+    # image_timestamp = selected_image_info["key"].split("image_")[-1].split(".jpg")[0]
 
     # load image from S3
     image_np = load_jpeg_from_s3(s3, S3_BUCKET_NAME, selected_image_key)
@@ -553,7 +534,7 @@ def update_webcam_graph_and_data(
         "img_height": img_height,
     }
 
-    return fig, title_text, bbox_store_data
+    return fig, bbox_store_data
 
 
 # Callback for charts (combined into one for efficiency)
@@ -631,7 +612,7 @@ def update_graphs(drag_value, n_intervals_url, image_keys_data, current_slider_v
         )
 
     # New Scatter Plot (Top-Right, formerly chart-2)
-    fig_new_scatter = px.scatter(title="No Data for Object Properties")
+    fig_new_scatter = px.scatter()
     if not df.empty and selected_timestamp_dt:
         # Filter df for the selected timestamp AND exclude 'whole_image' category
         df_scatter_data = df[
@@ -665,25 +646,16 @@ def update_graphs(drag_value, n_intervals_url, image_keys_data, current_slider_v
                     color="category_name",  # Color by category for better insights
                     color_discrete_map=color_mapping,
                     hover_name="category_name",
-                    title=f"Objects: Area, Count, Score for {selected_timestamp_str}",
                 )
                 fig_new_scatter.update_layout(
                     margin={"r": 0, "t": 40, "l": 0, "b": 0}, title_x=0.5
                 )
-            else:
-                fig_new_scatter = px.scatter(
-                    title=f"No valid object data for {selected_timestamp_str}"
-                )
-        else:
-            fig_new_scatter = px.scatter(
-                title=f"No object detection data for {selected_timestamp_str}"
-            )
     elif not df.empty:
         fig_new_scatter = px.scatter(title="Select an image to view object properties")
 
     # Mean Brightness Graph
     if df.empty:
-        fig_mean_brightness = px.scatter(title="No Data Available for Mean Brightness")
+        pass
     else:
         # Assuming mean_brightness is associated with 'whole_image' category
         df_brightness = df[df["category_name"] == "whole_image"].copy()

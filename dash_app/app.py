@@ -7,6 +7,7 @@ import os
 import boto3
 import dash
 import dash_bootstrap_components as dbc
+import dash_table
 import pandas as pd
 import plotly.colors
 import plotly.express as px
@@ -182,7 +183,7 @@ def fetch_data():
 
 
 # --- Dash App Initialization ---
-app = dash.Dash(__name__, external_stylesheets=[DBC_TEMPLATE])
+app = dash.Dash(__name__, external_stylesheets=[DBC_TEMPLATE], assets_folder="assets")
 app.title = "webcam-cloud dashboard"
 server = app.server
 
@@ -212,8 +213,6 @@ app.layout = html.Div(
                     style={
                         "textAlign": "center",
                         "marginBottom": "40px",
-                        "fontSize": "1.5rem",
-                        "color": "#fff",
                     },
                 ),
                 # Add the YouTube stream button here
@@ -224,9 +223,10 @@ app.layout = html.Div(
                     color="primary",  # Use a primary color from the theme
                     className="mb-4",  # Add margin-bottom using Bootstrap class
                     style={"width": "90%"},  # Make button fill container width
+                    target="_blank",  # Open in new tab
                 ),
                 # Text fields for title and description
-                html.H4(
+                html.H5(
                     youtube_title if youtube_title else "Stream Title Not Available",
                     style={
                         "textAlign": "center",
@@ -241,6 +241,7 @@ app.layout = html.Div(
                         "textAlign": "justify",
                         "fontSize": "0.9rem",
                         "marginBottom": "20px",
+                        "color": "#C4C4C4",
                     },
                 ),
                 html.Label(
@@ -252,21 +253,91 @@ app.layout = html.Div(
                         "fontWeight": "bold",
                     },
                 ),
-                dcc.Slider(
-                    id="image-slider",
-                    min=0,
-                    max=0,
-                    value=0,
-                    marks={},
-                    step=1,
-                    disabled=True,
-                    vertical=True,  # Make the slider vertical
-                    tooltip={
-                        "placement": "right",
-                        "always_visible": True,
-                        "style": {"font-size": "12px"},
+                dash_table.DataTable(
+                    id="image-table",
+                    columns=[
+                        {"name": "Timestamp", "id": "timestamp"}
+                    ],  # Define columns
+                    data=[],  # Initial empty data
+                    row_selectable="single",  # Allow selecting one row
+                    selected_rows=[0],  # Select the first row by default
+                    style_table={
+                        "overflowY": "auto",
+                        "height": "calc(100vh - 550px)",
+                    },  # Set table height and enable scrolling
+                    style_cell={
+                        "textAlign": "left",
+                        "minWidth": "100px",
+                        "width": "150px",
+                        "maxWidth": "200px",
+                        "overflow": "hidden",
+                        "textOverflow": "ellipsis",
+                        "backgroundColor": "#1e1e1e",  # Match sidebar background
+                        "color": "#fff",  # White text
+                        "border": "1px solid #333",  # Darker border
                     },
-                    updatemode="drag",
+                    style_header={
+                        # "backgroundColor": "#2a2a2a",  # Darker header background
+                        "color": "#fff",
+                        "fontWeight": "bold",
+                        "border": "1px solid #333",
+                    },
+                    style_data_conditional=[
+                        {
+                            "if": {"row_index": "odd"},
+                            # "backgroundColor": "#282828",  # Slightly different background for odd rows
+                        },
+                        {
+                            "if": {"state": "selected"},  # Style for selected row
+                            "backgroundColor": "#0074D9",
+                            "border": "1px solid #0074d9",
+                            "color": "#fff",  # Ensure text is white on highlight
+                        },
+                    ],
+                    sort_action="native",  # Enable sorting
+                    sort_mode="single",  # Allow sorting by a single column
+                    sort_by=[
+                        {"column_id": "timestamp", "direction": "desc"}
+                    ],  # Sort by timestamp descending by default
+                ),
+                html.Div(
+                    style={
+                        "marginTop": "20px",  # Add space above the links
+                        "textAlign": "center",  # Center the links
+                        "width": "100%",  # Ensure the div takes full width
+                    },
+                    children=[
+                        html.A(
+                            html.Img(
+                                src="/assets/github-icon.png",  # Path to your GitHub icon
+                                style={
+                                    "height": "30px",
+                                    "verticalAlign": "middle",
+                                },  # Style the icon size and alignment
+                            ),
+                            href="https://github.com/ChrisQlasty/webcam-cloud",  # Replace with your GitHub repo URL
+                            target="_blank",  # Open in new tab
+                            style={
+                                "color": "#fff",
+                                "marginRight": "15px",
+                            },  # Style color
+                        ),
+                        html.A(
+                            html.Img(
+                                src="/assets/dash-icon.png",  # Path to your Plotly/Dash icon
+                                style={
+                                    "height": "30px",
+                                    "verticalAlign": "middle",
+                                    "marginRight": "5px",
+                                },  # Style the icon size and alignment
+                            ),
+                            href="https://dash.plotly.com/",
+                            target="_blank",  # Open in new tab
+                            style={
+                                "color": "#fff",
+                            },  # Add space between links and style color
+                        ),
+                    ],
                 ),
             ],
         ),
@@ -276,10 +347,8 @@ app.layout = html.Div(
                 "display": "grid",
                 "gridTemplateColumns": "1fr 1fr",
                 "gridTemplateRows": "1fr 1fr",
-                "gap": "20px",
                 "height": "100vh",
                 "width": "100%",
-                "padding": "30px",
                 "boxSizing": "border-box",
                 "background": "#222",
             },
@@ -292,8 +361,8 @@ app.layout = html.Div(
                         "height": "100%",
                         "width": "100%",
                         "overflow": "hidden",
-                        "borderRadius": "8px",
                         "border": "1px solid #eee",
+                        "borderColor": "#ffffff00",
                         "padding": "10px",  # Add some padding inside the cell
                     },
                     children=[
@@ -318,7 +387,7 @@ app.layout = html.Div(
                 # Top-Right Cell: New Scatter Plot
                 html.Div(
                     style={
-                        "borderRadius": "8px",
+                        "borderColor": "#ffffff00",
                         "border": "1px solid #eee",
                     },
                     children=[
@@ -330,7 +399,7 @@ app.layout = html.Div(
                 # Bottom-Left Cell: Chart 1 (Category Counts)
                 html.Div(
                     style={
-                        "borderRadius": "8px",
+                        "borderColor": "#ffffff00",
                         "border": "1px solid #eee",
                     },
                     children=[
@@ -343,7 +412,7 @@ app.layout = html.Div(
                 # Bottom-Right Cell: Mean Brightness Chart
                 html.Div(
                     style={
-                        "borderRadius": "8px",
+                        "borderColor": "#ffffff00",
                         "border": "1px solid #eee",
                     },
                     children=[
@@ -386,76 +455,99 @@ def generate_color_mapping(categories):
     return color_mapping
 
 
+def extract_timestamp_from_key(key):
+    """Helper function to extract timestamp from S3 key"""
+    try:
+        timestamp_str = key.split("image_")[-1].split(".jpg")[0]
+        return pd.to_datetime(timestamp_str, format="%Y-%m-%d_%H:%M:%S")
+    except (IndexError, ValueError):
+        return datetime.datetime.min  # Handle cases where key format is unexpected
+
+
 # --- Callbacks ---
 
 
-# Callback to update the S3 image list and slider properties
+# Callback to update the S3 image list and table properties
 @callback(
     Output("image-keys-store", "data"),
-    Output("image-slider", "min"),
-    Output("image-slider", "max"),
-    Output("image-slider", "value"),
-    Output("image-slider", "marks"),
-    Output("image-slider", "disabled"),
+    Output("image-table", "data"),  # Output table data
+    Output("image-table", "columns"),  # Output table columns
+    Output(
+        "image-table", "selected_rows"
+    ),  # Output selected rows (to select the latest by default)
     Input("image-list-update-interval", "n_intervals"),
 )
-def update_image_list_and_slider(n_intervals_list):
-    logger.info(
-        f"Triggered: update_image_list_and_slider (interval={n_intervals_list})"
-    )
+def update_image_list_and_table(n_intervals_list):
+    logger.info(f"Triggered: update_image_list_and_table (interval={n_intervals_list})")
     image_data = get_s3_image_keys_and_timestamps(S3_BUCKET_NAME, S3_FOLDER_PREFIX)
 
     if not image_data:
-        logger.info("No images found in S3 bucket/prefix. Slider disabled.")
+        logger.info("No images found in S3 bucket/prefix. Table disabled.")
+        # Return empty data and columns, maybe a placeholder row
         return (
-            [],
-            0,
-            0,
-            0,
-            {0: {"label": "No images found", "style": {"color": "#f50"}}},
-            True,
+            [],  # image-keys-store data
+            [{"timestamp": "No images found"}],  # Table data with placeholder
+            [{"name": "Timestamp", "id": "timestamp"}],  # Table columns
+            [],  # No rows selected
         )
 
-    marks = {}
-    num_images = len(image_data)
-    # Define how many marks you want to show for large sets (e.g., max 10-20 visible marks)
-    desired_mark_count = min(num_images, 20)  # Show all if <=20, otherwise max 20
-    if desired_mark_count > 0:
-        step_for_marks = max(1, num_images // desired_mark_count)
-        indices_to_mark = list(range(0, num_images, step_for_marks))
-        if (num_images - 1) not in indices_to_mark:
-            indices_to_mark.append(num_images - 1)
+    # Sort image_data by extracted timestamp, latest first for the table display
+    image_data.sort(key=lambda x: extract_timestamp_from_key(x["key"]), reverse=True)
 
-        for i in indices_to_mark:
-            marks[i] = {"label": ""}  # Empty label for marks
+    # Prepare data for the DataTable
+    table_data = []
+    for item in image_data:
+        timestamp_dt = extract_timestamp_from_key(item["key"])
+        timestamp_str = (
+            timestamp_dt.strftime("%Y-%m-%d %H:%M:%S")
+            if timestamp_dt != datetime.datetime.min
+            else "Invalid Timestamp"
+        )
+        table_data.append({"timestamp": timestamp_str})
 
-    else:  # Case for num_images = 0 (though already handled above)
-        marks[0] = {"label": ""}
+    # Define table columns
+    table_columns = [{"name": "Timestamp", "id": "timestamp"}]
 
-    # Default to the latest image (last element in sorted list)
-    latest_image_index = len(image_data) - 1
+    # Select the first row (latest image) by default
+    selected_rows = [0] if table_data else []
 
-    return image_data, 0, latest_image_index, latest_image_index, marks, False
+    return image_data, table_data, table_columns, selected_rows
 
 
 # Callback to update the displayed image, its title, and store bbox data
 @callback(
     Output("webcam-graph", "figure"),  # Outputting the figure for the graph
     Output("bbox-data-store", "data"),  # Outputting bbox data to store
-    Input("image-slider", "drag_value"),
-    Input("image-url-refresh-interval", "n_intervals"),
+    Input("image-table", "selected_rows"),  # New input: selected rows from the table
+    Input(
+        "image-url-refresh-interval", "n_intervals"
+    ),  # Keep interval for potential data refresh
     State("image-keys-store", "data"),
-    State("image-slider", "value"),
 )
 def update_webcam_graph_and_data(
-    drag_value, n_intervals_url, image_keys_data, current_slider_value
+    selected_rows,
+    n_intervals_url,
+    image_keys_data,  # Updated function signature
 ):
     logger.info(
-        f"Triggered: update_webcam_graph_and_data (drag_value={drag_value}, url_refresh={n_intervals_url})"
+        f"Triggered: update_webcam_graph_and_data (selected_rows={selected_rows}, url_refresh={n_intervals_url})"
     )
 
-    if not image_keys_data:
-        logger.info("Image keys data is empty. Displaying error placeholder.")
+    # Determine the selected image key based on selected_rows
+    selected_image_info = None
+    if image_keys_data and selected_rows is not None and len(selected_rows) > 0:
+        selected_index = selected_rows[0]  # Get the index of the first selected row
+        if 0 <= selected_index < len(image_keys_data):
+            selected_image_info = image_keys_data[selected_index]
+        else:
+            logger.warning(
+                f"Selected row index {selected_index} is out of bounds for image_keys_data."
+            )
+
+    if not selected_image_info:
+        logger.info(
+            "No image selected or image keys data is empty. Displaying error placeholder."
+        )
         # Return a figure with the fallback image
         fig = go.Figure()
         fig.add_layout_image(
@@ -479,25 +571,9 @@ def update_webcam_graph_and_data(
             plot_bgcolor="rgba(0,0,0,0)",  # Make background transparent
             uirevision="Don't reset on callback",  # Keep zoom/pan
         )
-        return fig, "No Images Found", {}  # Return empty bbox data
-
-    effective_slider_value = (
-        drag_value if drag_value is not None else current_slider_value
-    )
-
-    # Ensure effective_slider_value is within valid range
-    if effective_slider_value is None or not (
-        0 <= effective_slider_value < len(image_keys_data)
-    ):
-        logger.info(
-            f"Invalid slider value {effective_slider_value}. Falling back to latest image."
-        )
-        selected_image_info = image_keys_data[-1]
-    else:
-        selected_image_info = image_keys_data[effective_slider_value]
+        return fig, {}  # Return empty bbox data
 
     selected_image_key = selected_image_info["key"]
-    # image_timestamp = selected_image_info["key"].split("image_")[-1].split(".jpg")[0]
 
     # load image from S3
     image_np = load_jpeg_from_s3(s3, S3_BUCKET_NAME, selected_image_key)
@@ -627,27 +703,27 @@ def update_webcam_graph_and_data(
     Output("cat_count_graph", "figure"),
     Output("chart-2", "figure"),
     Output("mean_brightness_graph", "figure"),
-    Input("image-slider", "drag_value"),
-    Input("image-url-refresh-interval", "n_intervals"),
+    Input("image-table", "selected_rows"),  # New input: selected rows from the table
+    Input(
+        "image-url-refresh-interval", "n_intervals"
+    ),  # Keep interval for potential data refresh
     State("image-keys-store", "data"),
-    State("image-slider", "value"),
 )
-def update_graphs(drag_value, n_intervals_url, image_keys_data, current_slider_value):
+def update_graphs(selected_rows, n_intervals_url, image_keys_data):
     logger.info(
-        f"Triggered: update_graphs (drag_value={drag_value}, interval={n_intervals_url})"
+        f"Triggered: update_graphs (selected_rows={selected_rows}, interval={n_intervals_url})"
     )
     df, distinct_categories = fetch_data()
     color_mapping = generate_color_mapping(distinct_categories)
 
     # --- Determine Selected Timestamp for filtering ---
     selected_timestamp_dt = None
-    selected_timestamp_str = "N/A"
-    if image_keys_data:
-        effective_slider_value = (
-            drag_value if drag_value is not None else current_slider_value
-        )
-        if 0 <= effective_slider_value < len(image_keys_data):
-            selected_image_info = image_keys_data[effective_slider_value]
+    selected_image_info = None
+
+    if image_keys_data and selected_rows is not None and len(selected_rows) > 0:
+        selected_index = selected_rows[0]  # Get the index of the first selected row
+        if 0 <= selected_index < len(image_keys_data):
+            selected_image_info = image_keys_data[selected_index]
             timestamp_str_from_key = (
                 selected_image_info["key"].split("image_")[-1].split(".jpg")[0]
             )
@@ -655,26 +731,14 @@ def update_graphs(drag_value, n_intervals_url, image_keys_data, current_slider_v
                 selected_timestamp_dt = pd.to_datetime(
                     timestamp_str_from_key, format="%Y-%m-%d_%H:%M:%S"
                 )
-                selected_timestamp_str = selected_timestamp_dt.strftime(
-                    "%Y-%m-%d_%H:%M:%S"
-                )
             except ValueError:
                 logger.info(
                     f"Could not parse timestamp from key: {selected_image_info['key']}"
                 )
-        elif (
-            image_keys_data
-        ):  # If invalid slider value, default to latest for timestamp string
-            latest_image_key = image_keys_data[-1]["key"]
-            selected_timestamp_str = latest_image_key.split("image_")[-1].split(".jpg")[
-                0
-            ]
-            try:
-                selected_timestamp_dt = pd.to_datetime(
-                    selected_timestamp_str, format="%Y-%m-%d_%H:%M:%S"
-                )
-            except ValueError:
-                pass  # Already handled, or will be caught by df.empty check
+        else:
+            logger.warning(
+                f"Selected row index {selected_index} is out of bounds for image_keys_data."
+            )
 
     # Cat Count Graph (Bottom-Left)
     if df.empty:
@@ -695,6 +759,14 @@ def update_graphs(drag_value, n_intervals_url, image_keys_data, current_slider_v
         fig_cat_count.update_layout(
             margin={"r": 0, "t": 40, "l": 0, "b": 0}, title_x=0.5
         )
+        # Add a vertical line or marker for the selected timestamp
+        if selected_timestamp_dt:
+            fig_cat_count.add_vline(
+                x=selected_timestamp_dt,
+                line_width=1,
+                line_dash="dash",
+                line_color="red",
+            )
 
     # New Scatter Plot (Top-Right, formerly chart-2)
     fig_new_scatter = px.scatter()
@@ -739,9 +811,8 @@ def update_graphs(drag_value, n_intervals_url, image_keys_data, current_slider_v
         fig_new_scatter = px.scatter(title="Select an image to view object properties")
 
     # Mean Brightness Graph
-    if df.empty:
-        pass
-    else:
+    fig_mean_brightness = px.scatter()  # Default empty figure
+    if not df.empty:
         # Assuming mean_brightness is associated with 'whole_image' category
         df_brightness = df[df["category_name"] == "whole_image"].copy()
         if not df_brightness.empty:
@@ -758,10 +829,20 @@ def update_graphs(drag_value, n_intervals_url, image_keys_data, current_slider_v
             fig_mean_brightness.update_layout(
                 margin={"r": 0, "t": 40, "l": 0, "b": 0}, title_x=0.5
             )
+            # Add a vertical line or marker for the selected timestamp
+            if selected_timestamp_dt:
+                fig_mean_brightness.add_vline(
+                    x=selected_timestamp_dt,
+                    line_width=1,
+                    line_dash="dash",
+                    line_color="red",
+                )
         else:
             fig_mean_brightness = px.scatter(
                 title="No 'whole_image' data for Mean Brightness"
             )
+    else:  # If df is empty
+        fig_mean_brightness = px.scatter(title="No Data Available for Mean Brightness")
 
     return fig_cat_count, fig_new_scatter, fig_mean_brightness
 

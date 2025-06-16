@@ -1,4 +1,5 @@
 import base64
+import datetime
 import io
 import logging
 import os
@@ -10,6 +11,7 @@ import pandas as pd
 import plotly.colors
 import plotly.express as px
 import plotly.graph_objects as go
+import yt_dlp
 from dash import Input, Output, State, callback, dcc, html
 from dash_bootstrap_templates import load_figure_template
 from PIL import Image
@@ -34,6 +36,28 @@ def get_theme_name(theme_url):
             return name
     return None
 
+
+def get_youtube_info(url):
+    """Fetches the title and description of a YouTube video using yt-dlp."""
+    ydl_opts = {
+        "quiet": True,  # Suppress console output
+        "skip_download": True,  # Don't download the video
+        "extract_flat": True,  # Extract info without resolving all details (faster)
+    }
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info_dict = ydl.extract_info(url, download=False)
+            title = info_dict.get("title")
+            description = info_dict.get("description")
+            current_year_str = str(datetime.datetime.now().year)
+            title = title.split(current_year_str)[0]
+            return title, description
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None, None
+
+
+youtube_title, youtube_description = get_youtube_info(STREAM_URL)
 
 DBC_TEMPLATE = dbc.themes.SUPERHERO
 load_figure_template(get_theme_name(DBC_TEMPLATE))
@@ -200,6 +224,24 @@ app.layout = html.Div(
                     color="primary",  # Use a primary color from the theme
                     className="mb-4",  # Add margin-bottom using Bootstrap class
                     style={"width": "90%"},  # Make button fill container width
+                ),
+                # Text fields for title and description
+                html.H4(
+                    youtube_title if youtube_title else "Stream Title Not Available",
+                    style={
+                        "textAlign": "center",
+                        "marginBottom": "10px",
+                    },
+                ),
+                html.P(
+                    youtube_description
+                    if youtube_description
+                    else "Description Not Available",
+                    style={
+                        "textAlign": "justify",
+                        "fontSize": "0.9rem",
+                        "marginBottom": "20px",
+                    },
                 ),
                 html.Label(
                     "Select Image:",

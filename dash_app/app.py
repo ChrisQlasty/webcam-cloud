@@ -20,7 +20,20 @@ from utils.aws_cloud import load_jpeg_from_s3, load_json_from_s3
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-load_figure_template("SUPERHERO")  # Load the SUPERHERO template for Plotly figures
+theme_map = {
+    name: getattr(dbc.themes, name) for name in dir(dbc.themes) if name.isupper()
+}
+
+
+def get_theme_name(theme_url):
+    for name, url in theme_map.items():
+        if url == theme_url:
+            return name
+    return None
+
+
+DBC_TEMPLATE = dbc.themes.MORPH
+load_figure_template(get_theme_name(DBC_TEMPLATE))
 
 # --- AWS Configuration ---
 REGION_NAME = os.getenv("TF_VAR_region", "us-east-1")
@@ -142,7 +155,7 @@ def fetch_data():
 
 
 # --- Dash App Initialization ---
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SUPERHERO])
+app = dash.Dash(__name__, external_stylesheets=[DBC_TEMPLATE])
 app.title = "webcam-cloud dashboard"
 server = app.server
 
@@ -173,7 +186,6 @@ app.layout = html.Div(
                     style={
                         "textAlign": "center",
                         "marginBottom": "40px",
-                        "font-family": "Roboto, sans-serif",
                         "fontSize": "1.5rem",
                         "color": "#fff",
                     },

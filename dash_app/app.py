@@ -17,8 +17,11 @@ from PIL import Image
 from modules.constants import ALLOWED_CATEGORIES, PROCESSED_FOLDER
 from utils.aws_cloud import load_jpeg_from_s3, load_json_from_s3
 
+STREAM_URL = os.getenv("ENV_STREAM_URL")
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 theme_map = {
     name: getattr(dbc.themes, name) for name in dir(dbc.themes) if name.isupper()
@@ -32,7 +35,7 @@ def get_theme_name(theme_url):
     return None
 
 
-DBC_TEMPLATE = dbc.themes.MORPH
+DBC_TEMPLATE = dbc.themes.SUPERHERO
 load_figure_template(get_theme_name(DBC_TEMPLATE))
 
 # --- AWS Configuration ---
@@ -163,7 +166,7 @@ server = app.server
 app.layout = html.Div(
     style={
         "display": "grid",
-        "gridTemplateColumns": "220px 1fr",  # Narrow left, wide right
+        "gridTemplateColumns": "300px 1fr",  # Narrow left, wide right
         "height": "100vh",
         "width": "100vw",
         "gap": "0",
@@ -176,7 +179,6 @@ app.layout = html.Div(
                 "flexDirection": "column",
                 "alignItems": "center",
                 "padding": "30px 10px 10px 10px",
-                "background": "#181818",
                 "height": "100vh",
                 "boxShadow": "2px 0 8px rgba(0,0,0,0.07)",
             },
@@ -189,6 +191,15 @@ app.layout = html.Div(
                         "fontSize": "1.5rem",
                         "color": "#fff",
                     },
+                ),
+                # Add the YouTube stream button here
+                dbc.Button(
+                    "Visit YouTube stream",
+                    href=STREAM_URL,  # <-- Paste your URL here
+                    external_link=True,  # Opens in a new tab
+                    color="primary",  # Use a primary color from the theme
+                    className="mb-4",  # Add margin-bottom using Bootstrap class
+                    style={"width": "90%"},  # Make button fill container width
                 ),
                 html.Label(
                     "Select Image:",

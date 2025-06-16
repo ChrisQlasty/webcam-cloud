@@ -154,11 +154,14 @@ def fetch_data():
         df = pd.DataFrame(items)
 
         if "id" in df.columns:
-            df["id"] = pd.to_datetime(
-                df["id"], format="%Y-%m-%d_%H:%M:%S", errors="coerce"
+            df.rename(columns={"id": "timestamp"}, inplace=True)
+
+        if "timestamp" in df.columns:
+            df["timestamp"] = pd.to_datetime(
+                df["timestamp"], format="%Y-%m-%d_%H:%M:%S", errors="coerce"
             )
-            df = df.dropna(subset=["id"])
-            df = df.sort_values(by="id")
+            df = df.dropna(subset=["timestamp"])
+            df = df.sort_values(by="timestamp")
 
         # Convert numeric columns that might be stored as Decimal or strings
         numeric_cols = ["count", "mean_area", "mean_score", "mean_brightness"]
@@ -361,9 +364,6 @@ app.layout = html.Div(
                         "height": "100%",
                         "width": "100%",
                         "overflow": "hidden",
-                        "border": "1px solid #eee",
-                        "borderColor": "#ffffff00",
-                        "padding": "10px",  # Add some padding inside the cell
                     },
                     children=[
                         # Use dcc.Graph instead of html.Img
@@ -377,19 +377,15 @@ app.layout = html.Div(
                             style={
                                 "maxWidth": "100%",
                                 "maxHeight": "100%",
-                                "height": "auto",
-                                "width": "auto",
-                                "flex": "0 1 auto",
+                                "height": "100%",
+                                "width": "100%",
+                                "flex": "1 1 auto",
                             },
                         ),
                     ],
                 ),
                 # Top-Right Cell: New Scatter Plot
                 html.Div(
-                    style={
-                        "borderColor": "#ffffff00",
-                        "border": "1px solid #eee",
-                    },
                     children=[
                         dcc.Graph(
                             id="chart-2", style={"height": "100%", "width": "100%"}
@@ -398,10 +394,6 @@ app.layout = html.Div(
                 ),
                 # Bottom-Left Cell: Chart 1 (Category Counts)
                 html.Div(
-                    style={
-                        "borderColor": "#ffffff00",
-                        "border": "1px solid #eee",
-                    },
                     children=[
                         dcc.Graph(
                             id="cat_count_graph",
@@ -411,10 +403,6 @@ app.layout = html.Div(
                 ),
                 # Bottom-Right Cell: Mean Brightness Chart
                 html.Div(
-                    style={
-                        "borderColor": "#ffffff00",
-                        "border": "1px solid #eee",
-                    },
                     children=[
                         dcc.Graph(
                             id="mean_brightness_graph",
@@ -746,10 +734,10 @@ def update_graphs(selected_rows, n_intervals_url, image_keys_data):
     else:
         df_filtered = df[df["category_name"] != "whole_image"].copy()
         df_filtered["count"] = pd.to_numeric(df_filtered["count"], errors="coerce")
-        df_filtered = df_filtered.sort_values(by=["category_name", "id"])
+        df_filtered = df_filtered.sort_values(by=["category_name", "timestamp"])
         fig_cat_count = px.line(
             df_filtered,
-            x="id",
+            x="timestamp",
             y="count",
             color="category_name",
             color_discrete_map=color_mapping,
@@ -773,7 +761,8 @@ def update_graphs(selected_rows, n_intervals_url, image_keys_data):
     if not df.empty and selected_timestamp_dt:
         # Filter df for the selected timestamp AND exclude 'whole_image' category
         df_scatter_data = df[
-            (df["id"] == selected_timestamp_dt) & (df["category_name"] != "whole_image")
+            (df["timestamp"] == selected_timestamp_dt)
+            & (df["category_name"] != "whole_image")
         ].copy()
 
         if not df_scatter_data.empty:
@@ -821,7 +810,7 @@ def update_graphs(selected_rows, n_intervals_url, image_keys_data):
             )
             fig_mean_brightness = px.line(
                 df_brightness,
-                x="id",
+                x="timestamp",
                 y="mean_brightness",
                 title="Mean Brightness Over Time",
                 markers=True,

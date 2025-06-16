@@ -148,64 +148,84 @@ server = app.server
 
 # --- Layout Definition ---
 app.layout = html.Div(
+    style={
+        "display": "grid",
+        "gridTemplateColumns": "220px 1fr",  # Narrow left, wide right
+        "height": "100vh",
+        "width": "100vw",
+        "gap": "0",
+    },
     children=[
-        html.H1(
-            "webcam-cloud dashboard",
-            style={
-                "textAlign": "center",
-                "marginBottom": "30px",
-                "font-family": "Roboto, sans-serif",
-            },
-        ),
+        # Area 1: Left column
         html.Div(
-            style={"textAlign": "center", "marginBottom": "20px"},
+            style={
+                "display": "flex",
+                "flexDirection": "column",
+                "alignItems": "center",
+                "padding": "30px 10px 10px 10px",
+                "background": "#181818",
+                "height": "100vh",
+                "boxShadow": "2px 0 8px rgba(0,0,0,0.07)",
+            },
             children=[
-                # Slider to select image
-                html.Div(
-                    style={"width": "80%", "margin": "20px auto"},
-                    children=[
-                        html.Label("Select Image:"),  # More generic label
-                        dcc.Slider(
-                            id="image-slider",
-                            min=0,
-                            max=0,
-                            value=0,
-                            marks={},  # Empty marks initially, populated by callback
-                            step=1,
-                            disabled=True,  # Disable until images are loaded
-                            tooltip={
-                                "placement": "bottom",
-                                "always_visible": True,
-                                "style": {"font-size": "12px"},
-                            },
-                        ),
-                    ],
+                html.H1(
+                    "webcam-cloud dashboard",
+                    style={
+                        "textAlign": "center",
+                        "marginBottom": "40px",
+                        "font-family": "Roboto, sans-serif",
+                        "fontSize": "1.5rem",
+                        "color": "#fff",
+                    },
+                ),
+                html.Label(
+                    "Select Image:",
+                    style={
+                        "color": "#fff",
+                        "marginBottom": "10px",
+                        "marginTop": "20px",
+                        "fontWeight": "bold",
+                    },
+                ),
+                dcc.Slider(
+                    id="image-slider",
+                    min=0,
+                    max=0,
+                    value=0,
+                    marks={},
+                    step=1,
+                    disabled=True,
+                    vertical=True,  # Make the slider vertical
+                    tooltip={
+                        "placement": "right",
+                        "always_visible": True,
+                        "style": {"font-size": "12px"},
+                    },
+                    updatemode="drag",
                 ),
             ],
         ),
-        # This is the main grid container
+        # Area 2: Right column (2x2 grid for figures)
         html.Div(
             style={
                 "display": "grid",
-                "grid-template-columns": "1fr 1fr",
-                "grid-template-rows": "1fr 1fr",
+                "gridTemplateColumns": "1fr 1fr",
+                "gridTemplateRows": "1fr 1fr",
                 "gap": "20px",
-                "height": "80vh",
-                "width": "90vw",
-                "margin": "auto",
-                "padding": "15px",
-                "border": "1px solid #ddd",
-                "borderRadius": "8px",
-                "boxShadow": "2px 2px 10px rgba(0,0,0,0.1)",
+                "height": "100vh",
+                "width": "100%",
+                "padding": "30px",
+                "boxSizing": "border-box",
+                "background": "#222",
             },
             children=[
-                # Top-Left Cell: Image (Webcam Feed)
                 html.Div(
                     style={
                         "display": "flex",
-                        "flexDirection": "column",  # Arrange children vertically
-                        "justifyContent": "flex-start",  # Align items to the top to give title space
                         "alignItems": "center",
+                        "justifyContent": "center",
+                        "height": "100%",
+                        "width": "100%",
                         "overflow": "hidden",
                         "borderRadius": "8px",
                         "border": "1px solid #eee",
@@ -223,9 +243,9 @@ app.layout = html.Div(
                             style={
                                 "maxWidth": "100%",
                                 "maxHeight": "100%",
-                                # objectFit: 'contain' is handled by layout settings in the figure
-                                "flexGrow": 0,
-                                "flexShrink": 1,
+                                "height": "auto",
+                                "width": "auto",
+                                "flex": "0 1 auto",
                             },
                         ),
                     ],

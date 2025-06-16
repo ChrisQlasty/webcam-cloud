@@ -179,6 +179,31 @@ def fetch_data():
             cat for cat in distinct_categories if cat != "whole_image"
         ]
 
+        # --- Fill missing categories with count=0 for each timestamp ---
+        if not df.empty and "timestamp" in df.columns and "category_name" in df.columns:
+            # Get all timestamps from 'whole_image' rows (these are the reference timestamps)
+            all_timestamps = df[df["category_name"] == "whole_image"][
+                "timestamp"
+            ].unique()
+            # Build a MultiIndex of all (timestamp, category) pairs (excluding 'whole_image')
+            full_index = pd.MultiIndex.from_product(
+                [all_timestamps, distinct_categories],
+                names=["timestamp", "category_name"],
+            )
+            # Filter out only non-'whole_image' rows
+            df_non_whole = df[df["category_name"] != "whole_image"].copy()
+            df_non_whole = df_non_whole.set_index(["timestamp", "category_name"])
+            # Reindex to fill missing (timestamp, category) pairs with NaN
+            df_filled = df_non_whole.reindex(full_index)
+            # Fill missing 'count' with 0, keep other columns as NaN
+            df_filled["count"] = df_filled["count"].fillna(0)
+            # Reset index for downstream compatibility
+            df_filled = df_filled.reset_index()
+            # Concatenate back the 'whole_image' rows
+            df_whole = df[df["category_name"] == "whole_image"].copy()
+            df = pd.concat([df_filled, df_whole], ignore_index=True, sort=False)
+            df = df.sort_values(by=["timestamp", "category_name"])
+
         return df, distinct_categories
     except Exception as e:
         logger.info(f"Error fetching data from DynamoDB: {e}")

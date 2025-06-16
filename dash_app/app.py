@@ -12,19 +12,22 @@ import pandas as pd
 import plotly.colors
 import plotly.express as px
 import plotly.graph_objects as go
-import yt_dlp
 from dash import Input, Output, State, callback, dcc, html
 from dash_bootstrap_templates import load_figure_template
 from PIL import Image
 
 from modules.constants import ALLOWED_CATEGORIES, PROCESSED_FOLDER
-from utils.aws_cloud import load_jpeg_from_s3, load_json_from_s3
+from utils.aws_cloud import (
+    get_s3_image_keys_and_timestamps,
+    load_jpeg_from_s3,
+    load_json_from_s3,
+)
+from utils.video_stream import get_youtube_info
 
 STREAM_URL = os.getenv("ENV_STREAM_URL")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 theme_map = {
     name: getattr(dbc.themes, name) for name in dir(dbc.themes) if name.isupper()
@@ -36,26 +39,6 @@ def get_theme_name(theme_url):
         if url == theme_url:
             return name
     return None
-
-
-def get_youtube_info(url):
-    """Fetches the title and description of a YouTube video using yt-dlp."""
-    ydl_opts = {
-        "quiet": True,  # Suppress console output
-        "skip_download": True,  # Don't download the video
-        "extract_flat": True,  # Extract info without resolving all details (faster)
-    }
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(url, download=False)
-            title = info_dict.get("title")
-            description = info_dict.get("description")
-            current_year_str = str(datetime.datetime.now().year)
-            title = title.split(current_year_str)[0]
-            return title, description
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return None, None
 
 
 youtube_title, youtube_description = get_youtube_info(STREAM_URL)
@@ -71,8 +54,6 @@ DEBUG = os.getenv("DASH_debug", "false").lower() in ("true", "1", "t")
 
 S3_FOLDER_PREFIX = f"{PROCESSED_FOLDER}/"
 
-# This image key is used as a fallback if no images are found in the bucket.
-# Ensure you have a placeholder image in your 'assets' folder for errors.
 S3_FALLBACK_IMAGE_PATH = "/assets/placeholder_webcam_error.png"
 S3_LOADING_IMAGE_PATH = "/assets/loading_placeholder.gif"
 
@@ -85,64 +66,25 @@ table = dynamodb.Table(SRC_TABLE)
 s3 = boto3.client("s3", region_name=REGION_NAME)
 
 
-def get_s3_image_keys_and_timestamps(bucket_name, prefix):
-    """
-    Lists all .jpg files in a given S3 bucket and prefix, sorted by LastModified.
-    Returns a list of dictionaries: [{'key': 'obj_key', 'last_modified': datetime_obj}, ...]
-    """
-    image_data = []
-    logger.info(
-        f"Attempting to list S3 objects in bucket: '{bucket_name}' with prefix: '{prefix}'"
-    )
+# --- Generate a color mapping for categories ---
+def generate_color_mapping(categories):
+    color_palette = (
+        plotly.colors.qualitative.Set1
+    )  # Use a predefined Plotly color palette
+    color_mapping = {
+        category: color_palette[i % len(color_palette)]
+        for i, category in enumerate(categories)
+    }
+    return color_mapping
+
+
+def extract_timestamp_from_key(key):
+    """Helper function to extract timestamp from S3 key"""
     try:
-        paginator = s3.get_paginator("list_objects_v2")
-        pages = paginator.paginate(Bucket=bucket_name, Prefix=prefix)
-
-        for page in pages:
-            if "Contents" in page:
-                for obj in page["Contents"]:
-                    key = obj["Key"]
-                    # Ensure it's a file (key not ending with '/') and has .jpg extension
-                    if not key.endswith("/") and key.lower().endswith(".jpg"):
-                        image_data.append(
-                            {"key": key, "last_modified": obj["LastModified"]}
-                        )
-            else:
-                # This message indicates that no 'Contents' section was found in a page response,
-                # which is normal for an empty prefix/bucket, or if there are no matching files.
-                logger.info(
-                    f"No 'Contents' found for prefix '{prefix}' or no matching files in a page."
-                )
-
-        # Sort images by their LastModified timestamp (oldest first for slider)
-        image_data.sort(key=lambda x: x["last_modified"], reverse=False)
-
-        logger.info(f"Found {len(image_data)} .jpg images in '{bucket_name}/{prefix}'.")
-        if image_data:
-            logger.info(
-                f"First image: {image_data[0]['key']} ({image_data[0]['last_modified']})"
-            )
-            logger.info(
-                f"Last image: {image_data[-1]['key']} ({image_data[-1]['last_modified']})"
-            )
-        return image_data
-    except boto3.exceptions.ClientError as e:
-        if e.response["Error"]["Code"] == "AccessDenied":
-            logger.info(
-                f"AWS S3 Access Denied: Check your IAM permissions for 's3:ListBucket' on '{bucket_name}'. Error: {e}"
-            )
-        elif e.response["Error"]["Code"] == "NoSuchBucket":
-            logger.info(
-                f"AWS S3 Error: Bucket '{bucket_name}' does not exist or you don't have access. Error: {e}"
-            )
-            # Add a print statement for the full error response for debugging
-            logger.info(f"Full error response: {e.response}")
-        else:
-            logger.info(f"An S3 client error occurred listing objects: {e}")
-        return []
-    except Exception as e:
-        logger.info(f"An unexpected error occurred listing S3 objects: {e}")
-        return []
+        timestamp_str = key.split("image_")[-1].split(".jpg")[0]
+        return pd.to_datetime(timestamp_str, format="%Y-%m-%d_%H:%M:%S")
+    except (IndexError, ValueError):
+        return datetime.datetime.min  # Handle cases where key format is unexpected
 
 
 # --- DynamoDB Function ---
@@ -456,38 +398,14 @@ app.layout = html.Div(
 )
 
 
-# --- Generate a color mapping for categories ---
-def generate_color_mapping(categories):
-    color_palette = (
-        plotly.colors.qualitative.Set1
-    )  # Use a predefined Plotly color palette
-    color_mapping = {
-        category: color_palette[i % len(color_palette)]
-        for i, category in enumerate(categories)
-    }
-    return color_mapping
-
-
-def extract_timestamp_from_key(key):
-    """Helper function to extract timestamp from S3 key"""
-    try:
-        timestamp_str = key.split("image_")[-1].split(".jpg")[0]
-        return pd.to_datetime(timestamp_str, format="%Y-%m-%d_%H:%M:%S")
-    except (IndexError, ValueError):
-        return datetime.datetime.min  # Handle cases where key format is unexpected
-
-
 # --- Callbacks ---
 
 
-# Callback to update the S3 image list and table properties
 @callback(
     Output("image-keys-store", "data"),
-    Output("image-table", "data"),  # Output table data
-    Output("image-table", "columns"),  # Output table columns
-    Output(
-        "image-table", "selected_rows"
-    ),  # Output selected rows (to select the latest by default)
+    Output("image-table", "data"),
+    Output("image-table", "columns"),
+    Output("image-table", "selected_rows"),
     Input("image-list-update-interval", "n_intervals"),
 )
 def update_image_list_and_table(n_intervals_list):
@@ -496,18 +414,14 @@ def update_image_list_and_table(n_intervals_list):
 
     if not image_data:
         logger.info("No images found in S3 bucket/prefix. Table disabled.")
-        # Return empty data and columns, maybe a placeholder row
         return (
-            [],  # image-keys-store data
-            [{"timestamp": "No images found"}],  # Table data with placeholder
-            [{"name": "Timestamp", "id": "timestamp"}],  # Table columns
-            [],  # No rows selected
+            [],
+            [{"timestamp": "No images found"}],
+            [{"name": "Timestamp", "id": "timestamp"}],
+            [],
         )
 
-    # Sort image_data by extracted timestamp, latest first for the table display
     image_data.sort(key=lambda x: extract_timestamp_from_key(x["key"]), reverse=True)
-
-    # Prepare data for the DataTable
     table_data = []
     for item in image_data:
         timestamp_dt = extract_timestamp_from_key(item["key"])
@@ -518,10 +432,7 @@ def update_image_list_and_table(n_intervals_list):
         )
         table_data.append({"timestamp": timestamp_str})
 
-    # Define table columns
     table_columns = [{"name": "Timestamp", "id": "timestamp"}]
-
-    # Select the first row (latest image) by default
     selected_rows = [0] if table_data else []
 
     return image_data, table_data, table_columns, selected_rows

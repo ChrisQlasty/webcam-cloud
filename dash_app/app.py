@@ -1,21 +1,26 @@
 import base64
-import datetime
 import io
 import logging
 import os
+from datetime import datetime
 
 import boto3
 import dash
 import dash_bootstrap_components as dbc
 import dash_table
 import pandas as pd
-import plotly.colors
 import plotly.express as px
 import plotly.graph_objects as go
 from dash import Input, Output, State, callback, dcc, html
 from dash_bootstrap_templates import load_figure_template
 from PIL import Image
 
+from dash_app.dash_utils import (
+    compare_timezones,
+    extract_timestamp_from_key,
+    generate_color_mapping,
+    get_theme_name,
+)
 from modules.constants import ALLOWED_CATEGORIES, PROCESSED_FOLDER
 from utils.aws_cloud import (
     get_s3_image_keys_and_timestamps,
@@ -24,67 +29,35 @@ from utils.aws_cloud import (
 )
 from utils.video_stream import get_youtube_info
 
+# --- CONSTANTS & ENV VARS ---
 STREAM_URL = os.getenv("ENV_STREAM_URL")
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-theme_map = {
-    name: getattr(dbc.themes, name) for name in dir(dbc.themes) if name.isupper()
-}
-
-
-def get_theme_name(theme_url):
-    for name, url in theme_map.items():
-        if url == theme_url:
-            return name
-    return None
-
-
-youtube_title, youtube_description = get_youtube_info(STREAM_URL)
-
-DBC_TEMPLATE = dbc.themes.SUPERHERO
-load_figure_template(get_theme_name(DBC_TEMPLATE))
-
-# --- AWS Configuration ---
-REGION_NAME = os.getenv("TF_VAR_region", "us-east-1")
-SRC_TABLE = os.getenv("TF_VAR_db_img_stats_table", "your_dynamodb_table_name")
+REGION_NAME = os.getenv("TF_VAR_region")
+SRC_TABLE = os.getenv("TF_VAR_db_img_stats_table")
 S3_BUCKET_NAME = os.getenv("TF_VAR_processed_bucket")
+
 DEBUG = os.getenv("DASH_debug", "false").lower() in ("true", "1", "t")
 
 S3_FOLDER_PREFIX = f"{PROCESSED_FOLDER}/"
-
 S3_FALLBACK_IMAGE_PATH = "/assets/placeholder_webcam_error.png"
 S3_LOADING_IMAGE_PATH = "/assets/loading_placeholder.gif"
 
-REFRESH_SECONDS = 300  # 5 minutes for pre-signed URL expiry
+REFRESH_SECONDS = 300
 S3_IMAGE_LIST_REFRESH_INTERVAL_SECONDS = 600  # Refresh S3 image list every 10 minutes
+DBC_TEMPLATE = dbc.themes.SUPERHERO
 
 # Initialize AWS clients
 dynamodb = boto3.resource("dynamodb", region_name=REGION_NAME)
 table = dynamodb.Table(SRC_TABLE)
 s3 = boto3.client("s3", region_name=REGION_NAME)
 
+# Logger
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# --- Generate a color mapping for categories ---
-def generate_color_mapping(categories):
-    color_palette = (
-        plotly.colors.qualitative.Set1
-    )  # Use a predefined Plotly color palette
-    color_mapping = {
-        category: color_palette[i % len(color_palette)]
-        for i, category in enumerate(categories)
-    }
-    return color_mapping
-
-
-def extract_timestamp_from_key(key):
-    """Helper function to extract timestamp from S3 key"""
-    try:
-        timestamp_str = key.split("image_")[-1].split(".jpg")[0]
-        return pd.to_datetime(timestamp_str, format="%Y-%m-%d_%H:%M:%S")
-    except (IndexError, ValueError):
-        return datetime.datetime.min  # Handle cases where key format is unexpected
+# Extraction of YT live stream info & timezone comparison
+load_figure_template(get_theme_name(DBC_TEMPLATE))
+YT_TITLE, YT_DESCRIPTION = get_youtube_info(STREAM_URL)
+TIME_DIFF = compare_timezones(query_city=YT_TITLE.replace("Live", ""))
 
 
 # --- DynamoDB Function ---
@@ -102,6 +75,7 @@ def fetch_data():
             df["timestamp"] = pd.to_datetime(
                 df["timestamp"], format="%Y-%m-%d_%H:%M:%S", errors="coerce"
             )
+            df["timestamp"] = df["timestamp"] + pd.Timedelta(hours=TIME_DIFF)
             df = df.dropna(subset=["timestamp"])
             df = df.sort_values(by="timestamp")
 
@@ -197,16 +171,14 @@ app.layout = html.Div(
                 ),
                 # Text fields for title and description
                 html.H5(
-                    youtube_title if youtube_title else "Stream Title Not Available",
+                    YT_TITLE if YT_TITLE else "Stream Title Not Available",
                     style={
                         "textAlign": "center",
                         "marginBottom": "10px",
                     },
                 ),
                 html.P(
-                    youtube_description
-                    if youtube_description
-                    else "Description Not Available",
+                    YT_DESCRIPTION if YT_DESCRIPTION else "Description Not Available",
                     style={
                         "textAlign": "justify",
                         "fontSize": "0.9rem",
@@ -279,13 +251,13 @@ app.layout = html.Div(
                     children=[
                         html.A(
                             html.Img(
-                                src="/assets/github-icon.png",  # Path to your GitHub icon
+                                src="/assets/github-icon.png",
                                 style={
                                     "height": "30px",
                                     "verticalAlign": "middle",
                                 },  # Style the icon size and alignment
                             ),
-                            href="https://github.com/ChrisQlasty/webcam-cloud",  # Replace with your GitHub repo URL
+                            href="https://github.com/ChrisQlasty/webcam-cloud",
                             target="_blank",  # Open in new tab
                             style={
                                 "color": "#fff",
@@ -294,7 +266,7 @@ app.layout = html.Div(
                         ),
                         html.A(
                             html.Img(
-                                src="/assets/dash-icon.png",  # Path to your Plotly/Dash icon
+                                src="/assets/dash-icon.png",
                                 style={
                                     "height": "30px",
                                     "verticalAlign": "middle",
@@ -425,9 +397,10 @@ def update_image_list_and_table(n_intervals_list):
     table_data = []
     for item in image_data:
         timestamp_dt = extract_timestamp_from_key(item["key"])
+        timestamp_dt = timestamp_dt + pd.Timedelta(hours=TIME_DIFF)
         timestamp_str = (
             timestamp_dt.strftime("%Y-%m-%d %H:%M:%S")
-            if timestamp_dt != datetime.datetime.min
+            if timestamp_dt != datetime.min
             else "Invalid Timestamp"
         )
         table_data.append({"timestamp": timestamp_str})
@@ -654,7 +627,7 @@ def update_graphs(selected_rows, n_intervals_url, image_keys_data):
             try:
                 selected_timestamp_dt = pd.to_datetime(
                     timestamp_str_from_key, format="%Y-%m-%d_%H:%M:%S"
-                )
+                ) + pd.Timedelta(hours=TIME_DIFF)
             except ValueError:
                 logger.info(
                     f"Could not parse timestamp from key: {selected_image_info['key']}"

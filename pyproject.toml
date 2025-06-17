@@ -43,9 +43,17 @@ lambda = [
 wwwviewer = [
     "boto3>=1.38.15",
     "dash>=3.0.4",
+    "dash-bootstrap-components>=2.0.3",
+    "dash-bootstrap-templates>=2.1.0",
+    "dash-table>=5.0.0",
+    "geopy>=2.4.1",
     "gunicorn>=23.0.0",
     "numpy>=2.2.5",
+    "opencv-python-headless>=4.11.0.86",
     "pandas>=2.2.3",
     "pillow>=11.2.1",
     "plotly>=6.1.2",
+    "pytz>=2025.2",
+    "timezonefinder>=6.5.9",
+    "yt-dlp>=2025.4.30",
 ]

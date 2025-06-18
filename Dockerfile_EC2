@@ -8,10 +8,10 @@ ENV PATH="/root/.local/bin:$PATH"
 
 WORKDIR /webcam-cloud
 
-COPY ./pyproject.toml .
+COPY ./pyproject.toml ./uv.lock ./
 
 # install no-dev dependencies quickly with uv
-RUN uv sync --extra wwwviewer --no-dev
+RUN uv sync --extra wwwviewer --no-dev --locked
     
 # ---- Stage PRODUCTION ----
 FROM python:3.10-slim-bookworm AS production
@@ -24,9 +24,11 @@ ENV PYTHONUNBUFFERED=1 \
 EXPOSE $PORT
 
 # use and set ENV_STREAM_URL
+ARG ENV_STREAM_URL
 ARG TF_VAR_region
 ARG TF_VAR_db_img_stats_table
 ARG TF_VAR_processed_bucket
+ENV ENV_STREAM_URL=$ENV_STREAM_URL
 ENV TF_VAR_region=$TF_VAR_region
 ENV TF_VAR_db_img_stats_table=$TF_VAR_db_img_stats_table
 ENV TF_VAR_processed_bucket=$TF_VAR_processed_bucket

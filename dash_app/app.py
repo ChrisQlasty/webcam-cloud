@@ -59,6 +59,35 @@ YT_TITLE, YT_DESCRIPTION = META["title"], META["description"]
 TIME_DIFF = compare_timezones(query_city=YT_TITLE.replace("Live", ""))
 
 
+# --- GLOBAL CACHES ---
+IMAGE_KEYS_CACHE = []
+BBOX_JSONS_CACHE = {}
+
+
+def load_all_images_and_jsons():
+    """Loads all image keys and their corresponding bbox JSONs from S3 into memory."""
+    global IMAGE_KEYS_CACHE, BBOX_JSONS_CACHE
+    IMAGE_KEYS_CACHE = get_s3_image_keys_and_timestamps(
+        S3_BUCKET_NAME, S3_FOLDER_PREFIX
+    )
+    BBOX_JSONS_CACHE = {}
+    for item in IMAGE_KEYS_CACHE:
+        key = item["key"]
+        json_key = key + ".out"
+        try:
+            bbox_data = load_json_from_s3(s3, S3_BUCKET_NAME, json_key)
+            if bbox_data is None:
+                bbox_data = []
+        except Exception as e:
+            logger.info(f"Error loading bbox JSON for {json_key}: {e}")
+            bbox_data = []
+        BBOX_JSONS_CACHE[key] = bbox_data
+
+
+# --- INITIAL LOAD ---
+load_all_images_and_jsons()
+
+
 # --- DynamoDB Function ---
 def fetch_data():
     """Fetches data from DynamoDB and returns a pandas DataFrame and distinct category names."""
@@ -381,7 +410,9 @@ app.layout = html.Div(
 )
 def update_image_list_and_table(n_intervals_list):
     logger.info(f"Triggered: update_image_list_and_table (interval={n_intervals_list})")
-    image_data = get_s3_image_keys_and_timestamps(S3_BUCKET_NAME, S3_FOLDER_PREFIX)
+    # Refresh cache
+    load_all_images_and_jsons()
+    image_data = IMAGE_KEYS_CACHE
 
     if not image_data:
         logger.info("No images found in S3 bucket/prefix. Table disabled.")
@@ -480,24 +511,8 @@ def update_webcam_graph_and_data(
     img_str = base64.b64encode(buffered.getvalue()).decode()
     image_src = f"data:image/png;base64,{img_str}"
 
-    # --- Fetch Bounding Box Data from S3 JSON ---
-    json_key = selected_image_key + ".out"
-    bbox_data_raw = []
-
-    try:
-        # Fetch JSON data
-        bbox_data_raw = load_json_from_s3(s3, S3_BUCKET_NAME, json_key)
-        if bbox_data_raw is None:  # load_json_from_s3 returns None on error
-            bbox_data_raw = []
-            logger.info(f"Could not load bbox data from {json_key}")
-
-    except Exception as e:
-        logger.info(
-            f"Error fetching bbox data or image dimensions for {selected_image_key}: {e}"
-        )
-        bbox_data_raw = []  # Ensure empty list on error
-        img_width = None
-        img_height = None
+    # --- Use cached bbox data ---
+    bbox_data_raw = BBOX_JSONS_CACHE.get(selected_image_key, [])
 
     # Create the figure with the image
     fig = go.Figure()

@@ -7,11 +7,10 @@ from datetime import datetime
 import boto3
 import dash
 import dash_bootstrap_components as dbc
-import dash_table
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from dash import Input, Output, State, callback, dcc, html
+from dash import Input, Output, State, callback, dash_table, dcc, html
 from dash_bootstrap_templates import load_figure_template
 from PIL import Image
 
@@ -21,13 +20,12 @@ from dash_app.dash_utils import (
     generate_color_mapping,
     get_theme_name,
 )
-from modules.constants import ALLOWED_CATEGORIES, PROCESSED_FOLDER
+from modules.constants import ALLOWED_CATEGORIES, PROCESSED_FOLDER, YT_METADATA_FILE
 from utils.aws_cloud import (
     get_s3_image_keys_and_timestamps,
     load_jpeg_from_s3,
     load_json_from_s3,
 )
-from utils.video_stream import get_youtube_info
 
 # --- CONSTANTS & ENV VARS ---
 STREAM_URL = os.getenv("ENV_STREAM_URL")
@@ -55,8 +53,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Extraction of YT live stream info & timezone comparison
-load_figure_template(get_theme_name(DBC_TEMPLATE))
-YT_TITLE, YT_DESCRIPTION = get_youtube_info(STREAM_URL)
+load_figure_template(get_theme_name(DBC_TEMPLATE).lower())
+META = load_json_from_s3(s3, S3_BUCKET_NAME, YT_METADATA_FILE)
+YT_TITLE, YT_DESCRIPTION = META["title"], META["description"]
 TIME_DIFF = compare_timezones(query_city=YT_TITLE.replace("Live", ""))
 
 
@@ -639,7 +638,7 @@ def update_graphs(selected_rows, n_intervals_url, image_keys_data):
 
     # Cat Count Graph (Bottom-Left)
     if df.empty:
-        fig_cat_count = px.scatter(title="No Data Available for Category Counts")
+        fig_cat_count = px.scatter()
     else:
         df_filtered = df[df["category_name"] != "whole_image"].copy()
         df_filtered["count"] = pd.to_numeric(df_filtered["count"], errors="coerce")
@@ -651,7 +650,6 @@ def update_graphs(selected_rows, n_intervals_url, image_keys_data):
             color="category_name",
             color_discrete_map=color_mapping,
             markers=True,
-            title="Category Counts Over Time",
         )
         fig_cat_count.update_layout(
             margin={"r": 0, "t": 40, "l": 0, "b": 0},

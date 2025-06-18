@@ -50,7 +50,7 @@ def capture_frame_with_opencv(stream_url: str) -> NDArray | bool:
             cap.release()
 
 
-def get_youtube_info(url):
+def get_youtube_info(url: str) -> tuple[str | None, str | None]:
     """Fetches the title and description of a YouTube video using yt-dlp."""
     ydl_opts = {
         "quiet": True,

@@ -9,3 +9,5 @@ ALLOWED_CATEGORIES = [
     "bus",
     "truck",
 ]
+
+YT_METADATA_FILE = "meta/yt.json"

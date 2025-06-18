@@ -84,7 +84,8 @@ echo $(aws ecr get-login-password --region $TF_VAR_region) | docker login --user
 make prep_ecr_repo docker_image_name=$TF_VAR_dash_image && \
 make build_image Dockerfile_name=Dockerfile_EC2 docker_image_name=$TF_VAR_dash_image build_arg="--build-arg TF_VAR_region=$TF_VAR_region \
     --build-arg TF_VAR_db_img_stats_table=$TF_VAR_db_img_stats_table \
-    --build-arg TF_VAR_processed_bucket=$TF_VAR_processed_bucket" && \
+    --build-arg TF_VAR_processed_bucket=$TF_VAR_processed_bucket \
+    --build-arg ENV_STREAM_URL=$ENV_STREAM_URL" && \
 make push_image docker_image_name=$TF_VAR_dash_image
 ```
 

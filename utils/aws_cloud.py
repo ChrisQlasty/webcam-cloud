@@ -68,6 +68,28 @@ def mv_files_to_bucket(
     }
 
 
+def get_s3_image_keys_and_timestamps(bucket_name, prefix):
+    """Lists all .jpg files in a given S3 bucket and prefix, sorted by LastModified."""
+    s3 = boto3.client("s3")
+    image_data = []
+    try:
+        paginator = s3.get_paginator("list_objects_v2")
+        pages = paginator.paginate(Bucket=bucket_name, Prefix=prefix)
+        for page in pages:
+            if "Contents" in page:
+                for obj in page["Contents"]:
+                    key = obj["Key"]
+                    if not key.endswith("/") and key.lower().endswith(".jpg"):
+                        image_data.append(
+                            {"key": key, "last_modified": obj["LastModified"]}
+                        )
+        image_data.sort(key=lambda x: x["last_modified"], reverse=False)
+        return image_data
+    except Exception as e:
+        logger.info(f"Error listing S3 objects: {e}")
+        return []
+
+
 def load_jpeg_from_s3(s3: Any, bucket: str, key: str) -> np.ndarray:
     """Return image as numpy array from S3 JPEG."""
     jpeg_obj = s3.get_object(Bucket=bucket, Key=key)

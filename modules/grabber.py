@@ -1,3 +1,4 @@
+import json
 import os
 import time
 from datetime import datetime
@@ -6,9 +7,14 @@ from pathlib import Path
 import click
 import cv2
 
+from modules.constants import YT_METADATA_FILE
 from utils.aws_cloud import upload_file_to_s3
 from utils.loggers import create_logger
-from utils.video_stream import capture_frame_with_opencv, get_direct_stream_url
+from utils.video_stream import (
+    capture_frame_with_opencv,
+    get_direct_stream_url,
+    get_youtube_info,
+)
 
 logger = create_logger(__name__)
 
@@ -16,6 +22,26 @@ TMP_OUTPUT_FILENAME = "data/output.jpg"
 STREAM_URL = os.getenv("ENV_STREAM_URL")
 REGION_NAME = os.getenv("TF_VAR_region")
 BUCKET_NAME = os.getenv("TF_VAR_input_bucket")
+TARGET_BUCKET_NAME = os.getenv("TF_VAR_processed_bucket")
+
+
+def dump_meta_to_s3(stream_url: str) -> None:
+    title, description = get_youtube_info(stream_url)
+    tmp_json_path = "yt_info.json"
+    with open(tmp_json_path, "w") as fh:
+        json.dump(
+            {"title": title, "description": description},
+            fh,
+            ensure_ascii=False,
+            indent=2,
+        )
+    upload_file_to_s3(
+        file_name=tmp_json_path,
+        bucket_name=TARGET_BUCKET_NAME,
+        object_name=YT_METADATA_FILE,
+        region_name=REGION_NAME,
+    )
+    Path(tmp_json_path).unlink()
 
 
 @click.command()
@@ -31,6 +57,8 @@ BUCKET_NAME = os.getenv("TF_VAR_input_bucket")
 def main(num_frames: int, wait_time: int):
     """Live url frames grab and S3 upload function. Intended to run locally, not
     in the cloud for now."""
+
+    dump_meta_to_s3(STREAM_URL)
 
     for _ in range(num_frames):
         timestamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")

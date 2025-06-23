@@ -9,6 +9,31 @@
 ![Ruff](https://img.shields.io/badge/linter-ruff-007ACC?logo=python&logoColor=white)
 ![Pre-commit](https://img.shields.io/badge/linter-pre--commit-FE6F6F)
 ![Makefile](https://img.shields.io/badge/build-Makefile-6E6E6E)
+![Plotly Dash](https://img.shields.io/badge/Plotly--Dash-v3.0.4-blue?logo=plotly&logoColor=white)
+
+# Overview
+
+This project is intended to learn and refresh the use of selected AWS cloud services, combined with Dash application development. It performs object detection on frames captured from a live YouTube stream, and presents the results through a Dash app.
+
+The main features and assumptions are:
+- The user starts the frame grabber script by providing a link to the live YouTube stream, along with the number of frames to capture and the time interval.
+- Frames are grouped into batches to run an AWS SageMaker batch transform inference job.
+- Results are stored as JSON files in an S3 bucket and also recorded in a DynamoDB table.
+- The processed results and basic analytics are viewable in the Dash app.
+- The data was collected between June 13–16, 2025.
+
+## Live Demo Availability
+The Dash app is available at "http:// 13.62.28.58: 8050" (remove spaces) from 10 AM to 4 PM on weekdays, until the end of July 2025.
+
+
+## Demo overview
+[![Watch the demo](assets/Screenshot_app_logo.png)](https://github.com/user-attachments/assets/742abf36-b843-4036-a7a8-dc27c07e7b41)
+
+
+
+# Architecture
+Scheme presents simplified architecture of the project along with some triggers and data flow.
+![AWS](assets/AWS_lucidchart_scheme.png)
 
 # Usage
 
@@ -46,7 +71,7 @@ to rebuild the Lambda package so that your changes are included.
 
 ## Setting everything up
 
-1. Prepare SageMaker inference model
+### 1. Prepare SageMaker inference model
 ```
 # Create bucket to store model
 aws s3api create-bucket --bucket ${TF_VAR_models_bucket} --region ${TF_VAR_region} --create-bucket-configuration LocationConstraint=${TF_VAR_region} && \
@@ -54,7 +79,7 @@ aws s3api create-bucket --bucket ${TF_VAR_models_bucket} --region ${TF_VAR_regio
 make prep_inference_model
 ```
 
-2. Build Endpoint Docker image and push to ECR
+### 2. Build Endpoint Docker image and push to ECR
 ```
 # Authenticate Docker to AWS ECR
 echo $(aws ecr get-login-password --region $TF_VAR_region) | docker login --username AWS --password-stdin $TF_VAR_aws_account_id.dkr.ecr.$TF_VAR_region.amazonaws.com && \  
@@ -66,7 +91,7 @@ make build_image Dockerfile_name=Dockerfile_Endpoint docker_image_name=$TF_VAR_o
 make push_image docker_image_name=$TF_VAR_obj_det_image
 ```
 
-3. Build Lambda2 Docker image and push to ECR
+### 3. Build Lambda2 Docker image and push to ECR
 ```
 # Authenticate Docker to AWS ECR
 echo $(aws ecr get-login-password --region $TF_VAR_region) | docker login --username AWS --password-stdin $TF_VAR_aws_account_id.dkr.ecr.$TF_VAR_region.amazonaws.com && \  
@@ -76,7 +101,7 @@ make build_image Dockerfile_name=Dockerfile_Lambda docker_image_name=$TF_VAR_lam
 make push_image docker_image_name=$TF_VAR_lambda2_image
 ```
 
-4. Build EC2 Docker image and push to ECR
+### 4. Build EC2 Docker image and push to ECR
 ```
 # Authenticate Docker to AWS ECR
 echo $(aws ecr get-login-password --region $TF_VAR_region) | docker login --username AWS --password-stdin $TF_VAR_aws_account_id.dkr.ecr.$TF_VAR_region.amazonaws.com && \  
@@ -89,17 +114,17 @@ make build_image Dockerfile_name=Dockerfile_EC2 docker_image_name=$TF_VAR_dash_i
 make push_image docker_image_name=$TF_VAR_dash_image
 ```
 
-5. Prepare code for AWS Lambda
+### 5. Prepare code for AWS Lambda
 ```
 make prep_lambda
 ```
 
-6. Set up services with Terraform
+### 6. Set up services with Terraform
 ```
 make aws_apply
 ```
 
-7. Run frames grabbing and initialize project
+### 7. Run frames grabbing and initialize project
 ```
 uv sync --extra grabber
 python modules/grabber.py
@@ -107,5 +132,6 @@ python modules/grabber.py
 
 Issues:
 ---
-I. Custom Docker image for SageMaker batch transform job
- - packing code to model.tar.gz is mandatory [GitHub issue](https://github.com/aws/sagemaker-pytorch-inference-toolkit/issues/61#issuecomment-665980501)
+I. Custom Docker image for SageMaker batch transform job -packing code to model.tar.gz is mandatory [GitHub issue](https://github.com/aws/sagemaker-pytorch-inference-toolkit/issues/61#issuecomment-665980501)  
+II. ss  
+III. Dash template in lowercase  

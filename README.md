@@ -1,5 +1,5 @@
 # webcam-cloud
----
+
 ![AWS](https://img.shields.io/badge/cloud-AWS-FF9900?logo=amazon-aws&logoColor=white)
 ![Terraform](https://img.shields.io/badge/IaC-Terraform-623CE4?logo=terraform&logoColor=white)
 ![YouTube](https://img.shields.io/badge/Stream%20from-YouTube-red?logo=youtube&logoColor=white)
@@ -13,11 +13,11 @@
 
 # Overview
 
-This project is intended to learn and refresh the use of selected AWS cloud services, combined with Dash application development. It performs object detection on frames captured from a live YouTube stream, and presents the results through a Dash app.
+This project is intended to learn and refresh the use of selected AWS cloud services, combined with Dash application development. It performs object detection on frames captured from a live YouTube stream and presents the results through a Dash app.
 
 The main features and assumptions are:
 - The user starts the frame grabber script by providing a link to the live YouTube stream, along with the number of frames to capture and the time interval.
-- Frames are grouped into batches to run an AWS SageMaker batch transform inference job.
+- Grabbed frames are grouped in order to run an AWS SageMaker batch transform inference job.
 - Results are stored as JSON files in an S3 bucket and also recorded in a DynamoDB table.
 - The processed results and basic analytics are viewable in the Dash app.
 - The data was collected between June 13–16, 2025.
@@ -32,7 +32,7 @@ The Dash app is available at "http:// 13.62.28.58: 8050" (remove spaces) from 10
 
 
 # Architecture
-Scheme presents simplified architecture of the project along with some triggers and data flow.
+Scheme prepared with Lucidchart presents simplified architecture of the project along with some triggers and data flow.
 ![AWS](assets/AWS_lucidchart_scheme.png)
 
 # Usage

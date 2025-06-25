@@ -23,7 +23,7 @@ The main features and assumptions are:
 - The data was collected between June 13–16, 2025.
 
 ## Live Demo Availability
-The Dash app is available at "http:// 13.62.28.58: 8050" (remove spaces) from 10 AM to 4 PM on weekdays, until the end of July 2025.
+The Dash app is available at "http:// 13.62.28.58: 8050" (remove spaces) from 10 AM to 4 PM CET on weekdays, until the end of July 2025.
 
 
 ## Demo overview
@@ -130,8 +130,14 @@ uv sync --extra grabber
 python modules/grabber.py
 ```
 
-Issues:
 ---
-I. Custom Docker image for SageMaker batch transform job -packing code to model.tar.gz is mandatory [GitHub issue](https://github.com/aws/sagemaker-pytorch-inference-toolkit/issues/61#issuecomment-665980501)  
-II. ss  
-III. Dash template in lowercase  
+## Issues:
+Some most annoying or unexpected issues met during the development:  
+
+I. Custom Docker image for SageMaker batch transform job does not seem to work as expected: Packing code to model.tar.gz is mandatory (see the `prep_inference_model` in the makefile) as the copy of files specified in the Dockerfile seems to be overwritten by the unpacked model artifact [(see GitHub issue).](https://github.com/aws/sagemaker-pytorch-inference-toolkit/issues/61#issuecomment-665980501)  
+
+II. Dash template in lowercase: Using ```from dash_bootstrap_templates import load_figure_template```  on Mac allows to specify template name in uppercase, whereas applied Docker image (```python:3.10-slim-bookworm```) required it to be in lowercase, and it was a pain to find it out.  
+
+III. The ```yt-dlp``` library used to grab video frames from live YouTube streams does not work out of the box on headless browsers (eg. on virtual machines like EC2), hence a local laptop was used for this purpose.
+
+IV. AWS Lambdas need their own base image (eg. `public.ecr.aws/lambda/python:3.10`) and not just one of popular like: ```python:3.10-slim-bookworm```
